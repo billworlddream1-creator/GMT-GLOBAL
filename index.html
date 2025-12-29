@@ -1,0 +1,127 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GMT GLOBAL | Deep Space Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent-primary: #3b82f6; 
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --bg-dark: #020617;
+            --glass-bg: rgba(15, 23, 42, 0.2); /* Ultra Transparent */
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            /* Galaxy/Celestial Background */
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                url('https://www.transparenttextures.com/patterns/stardust.png');
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            transition: background 1s ease;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-heading { font-family: 'Orbitron', sans-serif; }
+        
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px) saturate(200%); /* High transparency + blur */
+            border: 1px solid var(--glass-border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass:hover {
+            background: rgba(15, 23, 42, 0.3);
+            border-color: var(--accent-primary);
+        }
+
+        /* Motion and Fading for Windows */
+        .window-entry {
+            animation: window-fade-in 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        @keyframes window-fade-in {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); filter: blur(10px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        .galaxy-nav {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: twinkle var(--duration) infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: linear-gradient(to bottom, transparent 50%, rgba(255, 255, 255, 0.02) 51%);
+            background-size: 100% 4px;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "recharts": "https://esm.sh/recharts@2.12.7"
+  }
+}
+</script>
+</head>
+<body>
+    <div class="galaxy-nav" id="stars"></div>
+    <div id="root"></div>
+    <script>
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 150; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            const size = Math.random() * 2;
+            star.style.width = size + 'px';
+            star.style.height = size + 'px';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
+            starsContainer.appendChild(star);
+        }
+    </script>
+</body>
+</html>

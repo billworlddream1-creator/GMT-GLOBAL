@@ -1,0 +1,9 @@
+{
+  "name": "GMT GLOBAL: Intelligence & News",
+  "description": "A high-fidelity world intelligence portal delivering real-time news, political insights, and celebrity spotlights powered by Gemini Search Grounding.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera",
+    "geolocation"
+  ]
+}
