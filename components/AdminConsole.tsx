@@ -39,19 +39,19 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
       <div className="flex space-x-4 border-b border-white/5 pb-6 overflow-x-auto no-scrollbar">
         <button 
           onClick={() => setActiveTab('investments')}
-          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'investments' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
+          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'investments' ? 'bg-accent text-white shadow-[0_0_15px_var(--accent-glow)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
         >
           Investment Portfolio
         </button>
         <button 
           onClick={() => setActiveTab('partnerships')}
-          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'partnerships' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
+          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'partnerships' ? 'bg-accent text-white shadow-[0_0_15px_var(--accent-glow)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
         >
           Partner Agreements
         </button>
         <button 
           onClick={() => setActiveTab('settings')}
-          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
+          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-accent text-white shadow-[0_0_15px_var(--accent-glow)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
         >
           Global Configuration
         </button>
@@ -63,7 +63,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             <h3 className="text-xl font-heading font-black text-white uppercase tracking-tighter">
               {activeTab === 'investments' ? 'User Investment Ledger' : 'Partnership Terminal'}
             </h3>
-            <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-[9px] font-mono text-blue-400">
+            <div className="px-3 py-1 bg-accent/10 border border-accent/20 rounded text-[9px] font-mono text-accent">
               {activeTab === 'investments' ? `${investments.length} Active Requests` : `${partnerships.length} Active Partners`}
             </div>
           </div>
@@ -73,7 +73,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
               <thead>
                 <tr className="border-b border-white/10 text-slate-500 uppercase tracking-widest">
                   <th className="py-5 px-4 font-black">ID</th>
-                  <th className="py-5 px-4 font-black">Agent_ID</th>
+                  <th className="py-5 px-4 font-black">Sector/Role</th>
                   <th className="py-5 px-4 font-black">Capital</th>
                   <th className="py-5 px-4 font-black">Duration</th>
                   <th className="py-5 px-4 font-black">Yield/ROI</th>
@@ -84,10 +84,10 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
               <tbody className="divide-y divide-white/5">
                 {(activeTab === 'investments' ? (investments as any[]) : (partnerships as any[])).map((item) => (
                   <tr key={item.id} className="group hover:bg-white/5 transition-colors">
-                    <td className="py-5 px-4 text-blue-500 font-bold">{item.id.split('-').pop()}</td>
-                    <td className="py-5 px-4 text-slate-300">{item.userId}</td>
-                    <td className="py-5 px-4 font-black text-white">${item.amount.toLocaleString()}</td>
-                    <td className="py-5 px-4 text-slate-400">{item.durationMonths} Months</td>
+                    <td className="py-5 px-4 text-accent font-bold">{(item.id || "ITEM").split('-').pop()}</td>
+                    <td className="py-5 px-4 text-slate-300">{activeTab === 'investments' ? (item.sector || 'GLOBAL').replace('_', ' ') : (item.role || 'ASSET').replace('_', ' ')}</td>
+                    <td className="py-5 px-4 font-black text-white">${(item.amount || 0).toLocaleString()}</td>
+                    <td className="py-5 px-4 text-slate-400">{item.durationMonths || 0} Months</td>
                     <td className="py-5 px-4 text-emerald-400 font-bold">
                       {activeTab === 'investments' ? `+$${item.expectedReturn}` : `${item.roi}%`}
                     </td>
@@ -95,9 +95,9 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
                       <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter ${
                         item.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
                         item.status === 'REFUNDED' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                        'bg-blue-500/10 text-blue-500 border border-blue-500/20 animate-pulse'
+                        'bg-accent/10 text-accent border border-accent/20 animate-pulse'
                       }`}>
-                        {item.status}
+                        {item.status || "PENDING"}
                       </span>
                     </td>
                     <td className="py-5 px-4">
@@ -143,7 +143,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
               <input 
                 value={paymentSettings.paypalEmail}
                 onChange={(e) => setPaymentSettings({ ...paymentSettings, paypalEmail: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-blue-500 transition-all outline-none"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-accent transition-all outline-none"
                 placeholder="master@gmt-global.net"
               />
             </div>
@@ -152,7 +152,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
               <input 
                 value={paymentSettings.bankAccount}
                 onChange={(e) => setPaymentSettings({ ...paymentSettings, bankAccount: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-blue-500 transition-all outline-none"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-accent transition-all outline-none"
                 placeholder="BANK-NX-9922"
               />
             </div>
@@ -161,7 +161,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
               <input 
                 value={paymentSettings.cryptoWallet}
                 onChange={(e) => setPaymentSettings({ ...paymentSettings, cryptoWallet: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-blue-500 transition-all outline-none"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-accent transition-all outline-none"
                 placeholder="0xVault..."
               />
             </div>
@@ -169,7 +169,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
           <div className="pt-6">
             <button 
               onClick={() => playUISound('success')}
-              className="px-12 py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
+              className="px-12 py-5 bg-accent hover:bg-accent/80 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
             >
               Update Global Protocols
             </button>

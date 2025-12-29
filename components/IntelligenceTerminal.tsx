@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { IntelligenceService } from '../services/geminiService';
-import { IntelligenceReport, IntelligenceSignal } from '../types';
+import { IntelligenceReport, IntelligenceSignal, DecodedSignal } from '../types';
 import { playUISound } from '../utils/audioUtils';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -20,24 +20,35 @@ const WORLD_LANDMASSES = [
   "M-180,-80 L180,-80 L180,-90 L-180,-90 Z" // Antarctica
 ];
 
+const GALAXY_SECTORS = [
+  { id: 'SEC-ALPHA', name: 'Alpha Sector', x: -120, y: 40, size: 50 },
+  { id: 'SEC-OMEGA', name: 'Omega Rift', x: 80, y: -20, size: 70 },
+  { id: 'SEC-NEBULA', name: 'Cloud Cluster', x: -20, y: -60, size: 60 },
+  { id: 'SEC-CORE', name: 'Galactic Core', x: 0, y: 0, size: 90 },
+];
+
 const RenderSignalNode = (props: any) => {
   const { cx, cy, fill, payload, isSelected } = props;
   if (!cx || !cy) return null;
+  
   const isHigh = payload?.urgency === 'HIGH';
+  const isVanishing = payload?.isVanishing;
 
   return (
-    <g className="signal-node-group">
+    <g className={`signal-node-group ${isVanishing ? 'opacity-0' : 'opacity-100'} transition-opacity duration-1000`}>
       <circle
         cx={cx}
         cy={cy}
         r={isHigh ? 16 : 10}
         fill="none"
-        stroke={fill}
+        stroke={isVanishing ? '#94a3b8' : fill}
         strokeWidth={isSelected ? 3 : 1.5}
-        className="animate-signal-ping"
+        className={isVanishing ? '' : 'animate-signal-ping'}
+        opacity={isVanishing ? 0.3 : 1}
       />
-      {isSelected && (
-        <g className="animate-in zoom-in duration-500">
+      
+      {isSelected && !isVanishing && (
+        <g>
            <circle
             cx={cx}
             cy={cy}
@@ -56,36 +67,44 @@ const RenderSignalNode = (props: any) => {
           />
         </g>
       )}
+      
       <circle
         cx={cx}
         cy={cy}
         r={isHigh ? 7 : 5}
-        fill={isSelected ? '#fff' : fill}
-        className="cursor-pointer transition-all duration-300 hover:scale-[1.75] filter drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+        fill={isSelected ? '#fff' : (isVanishing ? '#475569' : fill)}
+        opacity={isVanishing ? 0.2 : 1}
+        className={`${isVanishing ? '' : 'cursor-pointer transition-all duration-300 hover:scale-[1.75]'}`}
       />
     </g>
   );
 };
 
-const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelService }) => {
+export default function IntelligenceTerminal({ intelService }: IntelligenceTerminalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [reports, setReports] = useState<IntelligenceReport[]>([]);
   const [signals, setSignals] = useState<IntelligenceSignal[]>([]);
-  const [signalLog, setSignalLog] = useState<{timestamp: string, location: string, urgency: string, id: string}[]>([]);
+  const [vanishingSignals, setVanishingSignals] = useState<(IntelligenceSignal & { vanishingAt: number })[]>([]);
   const [selectedSignal, setSelectedSignal] = useState<IntelligenceSignal | null>(null);
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeepScanning, setIsDeepScanning] = useState(false);
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [syncProgress, setSyncProgress] = useState(0);
+  const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0 });
+  const [activeSector, setActiveSector] = useState<string>('SEC-CORE');
   
-  // History State
+  const [isDecoding, setIsDecoding] = useState(false);
+  const [decryptedData, setDecryptedData] = useState<DecodedSignal | null>(null);
+  const [showDecodeModal, setShowDecodeModal] = useState(false);
+
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     const saved = localStorage.getItem('gmt_intel_history');
     return saved ? JSON.parse(saved) : [];
   });
   const [showHistory, setShowHistory] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   const isRefreshingRef = useRef(false);
 
@@ -98,18 +117,20 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
     
     try {
       const data = await intelService.getSatelliteSignals();
-      setSignals(data);
+      
+      setSignals(prevSignals => {
+        const removed = prevSignals.filter(oldSig => !data.find(newSig => newSig.id === oldSig.id));
+        if (removed.length > 0) {
+          setVanishingSignals(v => [
+            ...v, 
+            ...removed.map(r => ({ ...r, vanishingAt: Date.now() }))
+          ]);
+        }
+        return data;
+      });
+
       setLastSync(new Date());
       setSyncProgress(0);
-      
-      const newLogs = data.map(s => ({
-        id: s.id + '-' + Date.now(),
-        timestamp: new Date().toLocaleTimeString(),
-        location: s.location,
-        urgency: s.urgency
-      }));
-      
-      setSignalLog(prev => [...newLogs, ...prev].slice(0, 30));
       
       if (silent && data.length > 0) {
         playUISound('success');
@@ -123,6 +144,14 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
     }
   }, [intelService]);
 
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setVanishingSignals(prev => prev.filter(s => now - s.vanishingAt < 2500));
+    }, 1000);
+    return () => clearInterval(cleanup);
+  }, []);
+
   const handleSearch = async (query: string) => {
     if (!query.trim()) return;
     setLoading(true);
@@ -130,7 +159,6 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
     setShowHistory(false);
     playUISound('startup');
 
-    // Update History
     setSearchHistory(prev => {
       const filtered = prev.filter(h => h.toLowerCase() !== query.toLowerCase());
       const next = [query, ...filtered].slice(0, 10);
@@ -150,9 +178,32 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
     }
   };
 
-  const handleManualRefresh = () => {
-    playUISound('click');
-    fetchSignals(true);
+  const handleDecryptSignal = async () => {
+    if (!selectedSignal) return;
+    
+    setIsDecoding(true);
+    setShowDecodeModal(true);
+    playUISound('startup');
+    
+    try {
+      const cipher = `[SGNL_ID:${selectedSignal.id}] [LOC:${selectedSignal.location}] [DESC:${selectedSignal.description}]`;
+      const result = await intelService.decodeEncryptedSignal(cipher);
+      setDecryptedData(result);
+      playUISound('success');
+    } catch (err) {
+      console.error("Neural decryption failed", err);
+    } finally {
+      setIsDecoding(false);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (mapRef.current) {
+      const rect = mapRef.current.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 360 - 180;
+      const y = (1 - (e.clientY - rect.top) / rect.height) * 180 - 90;
+      setMouseCoords({ x: Math.round(x), y: Math.round(y) });
+    }
   };
 
   useEffect(() => {
@@ -170,74 +221,122 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
       });
     }, 100);
 
-    // Close history on click outside
-    const handleClickOutside = (e: MouseEvent) => {
-      if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
-        setShowHistory(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-
     return () => {
       clearInterval(syncInterval);
       clearInterval(progressInterval);
-      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [fetchSignals]);
 
   const mapData = useMemo(() => {
-    return signals.map(sig => ({
+    const activeData = signals.map(sig => ({
       x: sig.lng,
       y: sig.lat,
       z: sig.urgency === 'HIGH' ? 100 : sig.urgency === 'MEDIUM' ? 60 : 30,
+      isVanishing: false,
       ...sig
     }));
-  }, [signals]);
+
+    const ghostData = vanishingSignals.map(sig => ({
+      x: sig.lng,
+      y: sig.lat,
+      z: sig.urgency === 'HIGH' ? 80 : sig.urgency === 'MEDIUM' ? 40 : 20,
+      isVanishing: true,
+      ...sig
+    }));
+
+    return [...activeData, ...ghostData];
+  }, [signals, vanishingSignals]);
 
   const handleSignalClick = (data: any) => {
-    if (data && data.payload) {
+    if (data && data.payload && !data.payload.isVanishing) {
       setSelectedSignal(data.payload);
+      setDecryptedData(null);
       playUISound('click');
     }
   };
 
-  const getThreatVisuals = (level: string) => {
+  const threatVisuals = useMemo(() => (level: string) => {
     switch (level) {
       case 'SEVERE': 
-        return { text: 'text-red-500', border: 'border-red-500/30', bg: 'bg-red-500/10', solid: 'bg-red-600', glow: 'shadow-[0_0_40px_rgba(239,68,68,0.2)]', icon: '💀', status: 'CRITICAL', intensity: 100 };
+        return { text: 'text-red-500', border: 'border-red-500/30', bg: 'bg-red-500/10', solid: 'bg-red-600', glow: 'shadow-[0_0_40px_rgba(239,68,68,0.2)]', icon: '💀', status: 'CRITICAL' };
       case 'ELEVATED': 
-        return { text: 'text-amber-500', border: 'border-amber-500/30', bg: 'bg-amber-500/10', solid: 'bg-amber-500', glow: 'shadow-[0_0_40px_rgba(245,158,11,0.2)]', icon: '⚡', status: 'UNSTABLE', intensity: 65 };
+        return { text: 'text-amber-500', border: 'border-amber-500/30', bg: 'bg-amber-500/10', solid: 'bg-amber-500', glow: 'shadow-[0_0_40px_rgba(245,158,11,0.2)]', icon: '⚡', status: 'UNSTABLE' };
       default: 
-        return { text: 'text-emerald-500', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', solid: 'bg-emerald-500', glow: 'shadow-[0_0_40px_rgba(16,185,129,0.2)]', icon: '🛡️', status: 'SECURE', intensity: 25 };
+        return { text: 'text-emerald-500', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', solid: 'bg-emerald-500', glow: 'shadow-[0_0_40px_rgba(16,185,129,0.2)]', icon: '🛡️', status: 'SECURE' };
     }
-  };
-
-  const clearHistory = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSearchHistory([]);
-    localStorage.removeItem('gmt_intel_history');
-    playUISound('alert');
-  };
+  }, []);
 
   return (
     <div className="flex flex-col h-full space-y-10 animate-in fade-in duration-700 pb-32">
-      <div className="glass p-10 rounded-[3.5rem] border border-white/5 shadow-2xl space-y-10 bg-slate-900/40 relative overflow-hidden">
+      {showDecodeModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xl" onClick={() => !isDecoding && setShowDecodeModal(false)}></div>
+           <div className="relative w-full max-w-2xl glass p-10 rounded-[3rem] border border-white/20 shadow-[0_0_100px_rgba(59,130,246,0.2)] bg-slate-900/40 backdrop-blur-2xl animate-in zoom-in-95 duration-500 flex flex-col space-y-8 overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
+                 <div className={`h-full bg-accent transition-all duration-300 ${isDecoding ? 'animate-ticker' : 'w-full'}`} style={{ width: isDecoding ? '40%' : '100%' }}></div>
+              </div>
+              <div className="flex justify-between items-start">
+                 <div>
+                    <h3 className="text-2xl font-heading font-black text-white uppercase tracking-tighter">Decoding Message</h3>
+                    <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-1">
+                       {isDecoding ? 'Unlocking data packets...' : 'Unlock complete'}
+                    </p>
+                 </div>
+                 {!isDecoding && (
+                   <button onClick={() => setShowDecodeModal(false)} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+                 )}
+              </div>
+              <div className="flex-1 space-y-8 min-h-[300px]">
+                 {isDecoding ? (
+                   <div className="flex flex-col items-center justify-center h-full space-y-6">
+                      <div className="relative w-24 h-24">
+                         <div className="absolute inset-0 border-2 border-accent/20 rounded-full"></div>
+                         <div className="absolute inset-0 border-t-2 border-accent rounded-full animate-spin"></div>
+                         <div className="absolute inset-4 border border-accent/40 rounded-full animate-pulse flex items-center justify-center">
+                            <span className="text-[10px] font-mono text-accent">90%</span>
+                         </div>
+                      </div>
+                      <p className="text-xs font-mono text-slate-400 uppercase tracking-widest animate-pulse">Running protocols...</p>
+                   </div>
+                 ) : decryptedData && (
+                   <div className="space-y-8 animate-in fade-in duration-700">
+                      <div className="glass p-8 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 shadow-inner">
+                         <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.3em] block mb-4">Decoded Content</span>
+                         <p className="text-sm font-mono text-white leading-relaxed italic">"{decryptedData.decrypted}"</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-6">
+                         <div className="glass p-5 rounded-2xl border border-white/10 bg-white/5">
+                            <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Source</span>
+                            <span className="text-[10px] font-mono text-accent font-black">{decryptedData.origin}</span>
+                         </div>
+                         <div className="glass p-5 rounded-2xl border border-white/10 bg-white/5">
+                            <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Message ID</span>
+                            <span className="text-[10px] font-mono text-accent font-black">{decryptedData.id}</span>
+                         </div>
+                      </div>
+                   </div>
+                 )}
+              </div>
+              {!isDecoding && (
+                <button onClick={() => setShowDecodeModal(false)} className="w-full py-5 bg-accent text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.3em] shadow-[0_10px_30px_rgba(59,130,246,0.3)]">Close Report</button>
+              )}
+           </div>
+        </div>
+      )}
+
+      <div className="glass p-10 rounded-[3.5rem] border border-white/20 shadow-2xl space-y-10 bg-white/5 relative overflow-hidden backdrop-blur-md">
         <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent pointer-events-none"></div>
         <div className="flex justify-between items-end relative z-10">
           <div className="space-y-3">
-            <h2 className="text-4xl font-heading font-black text-white uppercase tracking-tighter leading-none glitch-text" data-text="GMT_INTEL: GRID_CONTROL">GMT_INTEL: GRID_CONTROL</h2>
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em]">REALTIME_SATELLITE_ORBITAL_STREAM // v5.0.0-PRO</p>
+            <h2 className="text-4xl font-heading font-black text-white uppercase tracking-tighter leading-none">World Intel</h2>
+            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em]">Real-time world news and map</p>
           </div>
           <div className="text-right flex flex-col items-end gap-2">
             <div className="flex items-center gap-3">
                <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-               <span className="text-[10px] font-mono text-accent font-black uppercase tracking-widest block">
-                 {isDeepScanning ? 'SCANNING_NEURAL_NODES...' : 'ENCRYPTED_UPLINK_STABLE'}
-               </span>
+               <span className="text-[10px] font-mono text-accent font-black uppercase tracking-widest">{isDeepScanning ? 'Searching...' : 'Connected'}</span>
             </div>
-            <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest font-bold">
-              Last_Sync: {lastSync.toLocaleTimeString()} | Next Auto-Sync: {Math.max(0, Math.ceil(SYNC_INTERVAL_SECONDS * (1 - syncProgress / 100)))}s
-            </span>
+            <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest font-bold">Sync: {lastSync.toLocaleTimeString()}</span>
           </div>
         </div>
 
@@ -249,234 +348,124 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch(searchTerm)}
-              placeholder="SEARCH_GLOBAL_INTELLIGENCE_DATABASE..."
-              className="w-full bg-white/5 border border-white/10 rounded-3xl pl-20 pr-16 py-6 text-sm font-mono text-white placeholder:text-slate-600 focus:border-accent transition-all outline-none shadow-inner"
+              placeholder="Search world intelligence..."
+              className="w-full bg-white/5 border border-white/10 rounded-3xl pl-20 pr-16 py-6 text-sm font-mono text-white placeholder:text-slate-600 focus:border-accent transition-all outline-none shadow-inner backdrop-blur-sm"
             />
-            
-            {/* History Toggle Button */}
-            <button 
-              onClick={() => { setShowHistory(!showHistory); playUISound('click'); }}
-              className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${showHistory ? 'bg-accent text-white shadow-accent' : 'text-slate-500 hover:text-white hover:bg-white/10'}`}
-              title="View Neural Query History"
-            >
-              <span className="text-lg">🕒</span>
-            </button>
-
-            {/* History Dropdown */}
-            {showHistory && searchHistory.length > 0 && (
-              <div 
-                ref={historyRef}
-                className="absolute top-full left-0 right-0 mt-4 z-[100] glass rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500"
-              >
-                <div className="bg-black/60 px-8 py-4 border-b border-white/5 flex justify-between items-center">
-                  <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest font-black">NEURAL_QUERY_ARCHIVE</span>
-                  <button 
-                    onClick={clearHistory}
-                    className="text-[9px] font-mono text-red-500 hover:text-red-400 uppercase tracking-widest font-black"
-                  >
-                    PURGE_ARCHIVE
-                  </button>
-                </div>
-                <div className="max-h-[300px] overflow-y-auto no-scrollbar py-2">
-                  {searchHistory.map((query, i) => (
-                    <button 
-                      key={i}
-                      onClick={() => { setSearchTerm(query); handleSearch(query); }}
-                      className="w-full text-left px-10 py-4 text-xs font-mono text-slate-300 hover:text-white hover:bg-accent/10 transition-all flex items-center justify-between group border-l-4 border-transparent hover:border-accent"
-                    >
-                      <span className="truncate">{query}</span>
-                      <span className="text-[8px] text-accent font-black opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">Execute_Scan</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
-          <button 
-            onClick={() => handleSearch(searchTerm)}
-            disabled={loading}
-            className="px-14 py-6 bg-accent hover:opacity-80 text-white font-heading font-black text-xs uppercase tracking-[0.3em] rounded-3xl shadow-[0_10px_30px_rgba(59,130,246,0.3)] transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3"
-          >
-            {loading ? (
-              <>
-                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ANALYZING...
-              </>
-            ) : 'DEEP_SCAN'}
-          </button>
+          <button onClick={() => handleSearch(searchTerm)} disabled={loading} className="px-14 py-6 bg-accent/80 hover:bg-accent text-white font-heading font-black text-xs uppercase tracking-[0.3em] rounded-3xl shadow-[0_10px_30px_rgba(59,130,246,0.3)] transition-all">Scan Now</button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
-        <div className="lg:col-span-3 glass rounded-[3.5rem] border border-white/5 p-10 h-[650px] relative overflow-hidden group bg-[#020617] shadow-2xl">
+        <div className="lg:col-span-3 glass rounded-[3.5rem] border border-white/20 p-10 h-[650px] relative overflow-hidden group bg-black/40 shadow-2xl backdrop-blur-md" ref={mapRef} onMouseMove={handleMouseMove}>
           <div className="absolute top-0 left-0 w-full h-1.5 bg-white/5 z-20">
-             <div 
-               className="h-full bg-accent transition-all duration-300 ease-linear shadow-[0_0_25px_var(--accent-primary)]" 
-               style={{ width: `${syncProgress}%` }}
-             ></div>
+             <div className="h-full bg-accent transition-all duration-300 ease-linear shadow-[0_0_25px_var(--accent-primary)]" style={{ width: `${syncProgress}%` }}></div>
           </div>
-          <div className="absolute inset-0 opacity-25 pointer-events-none z-0">
-             <svg width="100%" height="100%" viewBox="-180 -90 360 180" preserveAspectRatio="xMidYMid meet">
+          
+          <div className="absolute inset-0 opacity-40 pointer-events-none z-0 overflow-hidden">
+             <svg width="100%" height="100%" viewBox="-180 -90 360 180" preserveAspectRatio="xMidYMid slice">
                <defs>
-                 <pattern id="grid-dots-tactical-v2" width="20" height="20" patternUnits="userSpaceOnUse">
-                   <circle cx="1" cy="1" r="0.6" fill="var(--accent-primary)" opacity="0.4"/>
-                 </pattern>
+                 <filter id="nebula-glow">
+                   <feGaussianBlur stdDeviation="5" result="blur" />
+                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                 </filter>
+                 <radialGradient id="nebula-grad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                 </radialGradient>
                </defs>
-               <rect x="-180" y="-90" width="360" height="180" fill="url(#grid-dots-tactical-v2)" />
-               {WORLD_LANDMASSES.map((path, i) => (
-                 <path key={i} d={path} fill="none" stroke="var(--accent-primary)" strokeWidth="0.6" opacity="0.2" strokeDasharray="3,3"/>
+               
+               {[...Array(50)].map((_, i) => (
+                 <circle key={i} cx={Math.random() * 360 - 180} cy={Math.random() * 180 - 90} r={Math.random() * 0.5} fill="#fff" opacity={Math.random()} />
                ))}
-               <line x1="-180" y1="0" x2="180" y2="0" stroke="var(--accent-primary)" strokeWidth="0.4" opacity="0.15" />
+
+               {GALAXY_SECTORS.map((sec) => (
+                 <g key={sec.id} opacity={activeSector === sec.id ? 0.6 : 0.2} className="transition-opacity duration-1000">
+                    <circle cx={sec.x} cy={sec.y} r={sec.size} fill="url(#nebula-grad)" filter="url(#nebula-glow)" />
+                    <text x={sec.x} y={sec.y + sec.size + 5} fill="white" fontSize="4" fontStyle="italic" textAnchor="middle" opacity="0.5">{sec.name}</text>
+                 </g>
+               ))}
+
+               {WORLD_LANDMASSES.map((path, i) => (
+                 <path key={i} d={path} fill="none" stroke="var(--accent-primary)" strokeWidth="0.4" opacity="0.15" strokeDasharray="2,2"/>
+               ))}
              </svg>
           </div>
+
           <div className="absolute top-10 left-10 z-10 flex flex-col gap-3">
             <div className="flex items-center gap-5">
               <h3 className="text-xs font-heading font-black text-white uppercase tracking-[0.4em] flex items-center gap-3">
                 <span className="w-3 h-3 rounded-full bg-accent animate-pulse"></span>
-                TACTICAL_GEOSPATIAL_GRID
+                Galaxy Navigation
               </h3>
-              <button 
-                onClick={handleManualRefresh}
-                disabled={isRefreshing}
-                className={`flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-[9px] font-mono font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all shadow-xl ${isRefreshing ? 'animate-pulse opacity-50' : ''}`}
-              >
-                <span>{isRefreshing ? '🔄' : '↻'}</span>
-                <span>FORCED_SYNC</span>
-              </button>
+              <button onClick={() => fetchSignals(true)} className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 border border-white/20 text-[9px] font-mono font-black uppercase tracking-widest hover:bg-accent transition-all">Refresh</button>
             </div>
-            <div className="flex gap-6">
-               <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest font-bold">Grid_Resolution: 0.05°</span>
-               <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest font-bold">Live_Nodes: {signals.length}</span>
-               <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest font-black animate-pulse">Bandwidth: 1.2GBPS</span>
+            <div className="flex gap-4">
+              {GALAXY_SECTORS.map(sec => (
+                <button 
+                  key={sec.id}
+                  onClick={() => { setActiveSector(sec.id); playUISound('click'); }}
+                  className={`text-[8px] font-mono px-3 py-1 rounded border transition-all ${activeSector === sec.id ? 'bg-accent/40 border-accent text-white' : 'border-white/10 text-slate-500'}`}
+                >
+                  {sec.name.split(' ')[0]}
+                </button>
+              ))}
             </div>
           </div>
+
+          <div className="absolute bottom-10 left-10 z-30 font-mono text-[9px] text-accent/60 bg-black/60 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
+            <div>CURSOR_POS: X[{mouseCoords.x}] Y[{mouseCoords.y}]</div>
+            <div>SECTOR_STATUS: {activeSector.replace('SEC-', '')}_OPERATIONAL</div>
+          </div>
+
           <div className="w-full h-full relative z-10">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 60, right: 60, bottom: 60, left: 60 }}>
                 <XAxis type="number" dataKey="x" domain={[-180, 180]} hide />
                 <YAxis type="number" dataKey="y" domain={[-90, 90]} hide />
                 <ZAxis type="number" dataKey="z" range={[150, 600]} />
-                <Tooltip 
-                  cursor={{ strokeDasharray: '4 4', stroke: 'var(--accent-primary)', strokeWidth: 1 }}
-                  content={() => null} 
-                />
+                <Tooltip cursor={{ strokeDasharray: '4 4' }} content={() => null} />
                 <Scatter 
-                  name="Intelligence Signals" 
-                  data={mapData} 
-                  onClick={handleSignalClick}
-                  shape={(props: any) => (
-                    <RenderSignalNode 
-                      {...props} 
-                      isSelected={selectedSignal?.id === props.payload.id} 
-                    />
-                  )}
-                  isAnimationActive={true}
-                  animationBegin={0}
-                  animationDuration={1000}
+                    name="Signals" 
+                    data={mapData} 
+                    onClick={handleSignalClick} 
+                    shape={<RenderSignalNode isSelected={selectedSignal?.id} />}
                 >
-                  {mapData.map((entry, index) => (
+                  {mapData.map((entry) => (
                     <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.urgency === 'HIGH' ? '#ef4444' : 'var(--accent-primary)'} 
+                        key={`cell-${entry.id}`} 
+                        fill={entry.urgency === 'HIGH' ? '#ef4444' : 'var(--accent-primary)'}
+                        {...{isSelected: selectedSignal?.id === entry.id}}
                     />
                   ))}
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
           </div>
-          <div className="absolute bottom-10 left-10 z-10 font-mono text-[9px] text-slate-600 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/5 uppercase tracking-widest flex gap-4">
-             <div>X_LNG: {selectedSignal ? selectedSignal.lng.toFixed(4) : '--.----'}</div>
-             <div>Y_LAT: {selectedSignal ? selectedSignal.lat.toFixed(4) : '--.----'}</div>
-          </div>
         </div>
 
-        <div className="glass rounded-[3.5rem] border border-white/5 p-10 flex flex-col bg-slate-900/20 h-[650px] shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-accent/5 pointer-events-none"></div>
+        <div className="glass rounded-[3.5rem] border border-white/20 p-10 flex flex-col bg-slate-900/40 h-[650px] shadow-2xl relative overflow-hidden backdrop-blur-md">
           <div className="flex-1 space-y-8 overflow-hidden flex flex-col relative z-10">
-            <div className="border-b border-white/5 pb-6">
-              <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest flex justify-between items-center">
-                SIGNAL_INSPECTOR
-                <span className="flex items-center gap-2 text-emerald-500 animate-pulse text-[9px] font-mono font-black">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  SCANNING
-                </span>
-              </h3>
-            </div>
+            <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest border-b border-white/10 pb-6">Item Details</h3>
             <div className="flex-1 flex flex-col min-h-0">
                {selectedSignal ? (
                  <div className="flex flex-col h-full space-y-8 animate-in fade-in slide-in-from-right-6 duration-700">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className={`text-[9px] font-mono font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${selectedSignal.urgency === 'HIGH' ? 'bg-red-500/20 text-red-500 border border-red-500/20' : 'bg-blue-500/20 text-blue-500 border border-blue-500/20'}`}>
-                          {selectedSignal.urgency}_PRIORITY
-                        </span>
-                        <span className="text-[9px] font-mono text-slate-600 font-bold uppercase tracking-widest">ID: {selectedSignal.id.split('-').pop()}</span>
-                      </div>
-                      <h4 className="text-2xl font-heading font-black text-white uppercase tracking-tighter leading-tight mt-4 drop-shadow-lg">
-                        {selectedSignal.location.toUpperCase()}
-                      </h4>
-                      <p className="text-[10px] font-mono text-accent uppercase font-black tracking-widest">{selectedSignal.type.replace('_', ' ')}</p>
+                    <span className={`text-[9px] font-mono font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border w-fit ${selectedSignal.urgency === 'HIGH' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
+                      {selectedSignal.urgency} Priority
+                    </span>
+                    <h4 className="text-2xl font-heading font-black text-white uppercase tracking-tighter leading-tight">{selectedSignal.location}</h4>
+                    <div className="flex-1 overflow-y-auto no-scrollbar glass p-6 rounded-[2rem] border border-white/20 italic bg-white/5">
+                       <p className="text-xs font-mono text-slate-300 leading-relaxed">"{selectedSignal.description || 'No information available.'}"</p>
                     </div>
-                    <div className="glass p-6 rounded-3xl border border-white/10 bg-black/60 shadow-inner">
-                       <span className="text-[9px] font-mono text-slate-500 uppercase block mb-4 tracking-widest font-black">PRECISE_TELEMETRY</span>
-                       <div className="grid grid-cols-2 gap-6">
-                          <div>
-                            <span className="text-[8px] font-mono text-slate-600 uppercase block font-black mb-1">LATITUDE</span>
-                            <span className="text-xs font-mono text-white font-black tabular-nums">{selectedSignal.lat.toFixed(6)}°</span>
-                          </div>
-                          <div>
-                            <span className="text-[8px] font-mono text-slate-600 uppercase block font-black mb-1">LONGITUDE</span>
-                            <span className="text-xs font-mono text-white font-black tabular-nums">{selectedSignal.lng.toFixed(6)}°</span>
-                          </div>
-                       </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto no-scrollbar">
-                       <span className="text-[9px] font-mono text-slate-500 uppercase block mb-4 tracking-widest font-black">INTEL_BRIEFING</span>
-                       <p className="text-xs font-mono text-slate-300 leading-relaxed bg-white/5 p-6 rounded-[2rem] border border-white/5 italic shadow-inner">
-                         "{selectedSignal.description}"
-                       </p>
-                    </div>
-                    {selectedSignal.groundingUri && (
-                      <div className="pt-6 border-t border-white/5">
-                        <a 
-                          href={selectedSignal.groundingUri} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="w-full flex items-center justify-center gap-3 py-5 bg-accent hover:bg-white hover:text-accent text-white rounded-3xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-[0_10px_30px_rgba(59,130,246,0.2)] group"
-                        >
-                          <span>VERIFY_VIA_UPLINK</span>
-                          <span className="group-hover:translate-x-2 transition-transform">→</span>
-                        </a>
-                      </div>
-                    )}
-                    <button 
-                      onClick={() => { setSelectedSignal(null); playUISound('click'); }}
-                      className="text-[9px] font-mono text-slate-600 hover:text-white uppercase tracking-widest font-black transition-colors text-center w-full py-3 hover:bg-white/5 rounded-xl"
-                    >
-                      TERMINATE_SELECTION
-                    </button>
+                    <button onClick={handleDecryptSignal} className="w-full py-5 bg-white/5 hover:bg-accent border border-white/20 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] transition-all">Decode Message</button>
+                    <button onClick={() => setSelectedSignal(null)} className="text-[9px] font-mono text-slate-600 hover:text-white uppercase font-black text-center py-2">Clear</button>
                  </div>
                ) : (
-                 <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 opacity-40">
-                    <div className="w-24 h-24 border-2 border-white/10 rounded-full flex items-center justify-center relative shadow-2xl">
-                       <div className="absolute inset-0 border-t-2 border-accent rounded-full animate-spin-slow"></div>
-                       <span className="text-4xl">🛰️</span>
-                    </div>
-                    <div className="space-y-3">
-                       <p className="text-sm font-heading font-black text-white uppercase tracking-widest">Awaiting_Target</p>
-                       <p className="text-[10px] font-mono text-slate-400 max-w-[200px] mx-auto uppercase tracking-widest leading-relaxed">Select an active node on the tactical grid to inspect signal telemetry and intel briefs.</p>
-                    </div>
+                 <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 opacity-40">
+                    <p className="text-sm font-heading font-black text-white uppercase tracking-widest">Select an item</p>
+                    <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest leading-relaxed">Click a dot on the galaxy map to view detailed intel reports.</p>
                  </div>
                )}
-            </div>
-            <div className="pt-6 border-t border-white/5 h-28 overflow-y-auto no-scrollbar space-y-2">
-               {signalLog.slice(0, 6).map(log => (
-                 <div key={log.id} className="text-[9px] font-mono flex justify-between items-center px-4 py-2 bg-white/5 rounded-xl border border-white/5 opacity-60 hover:opacity-100 transition-opacity cursor-default group">
-                    <span className="text-slate-500 font-bold">[{log.timestamp.split(':').slice(0, 2).join(':')}]</span>
-                    <span className="text-white truncate mx-4 font-black group-hover:text-accent transition-colors">{log.location.toUpperCase()}</span>
-                    <span className={log.urgency === 'HIGH' ? 'text-red-500' : 'text-blue-400'}>{log.urgency[0]}</span>
-                 </div>
-               ))}
             </div>
           </div>
         </div>
@@ -484,87 +473,37 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-10">
         {loading ? (
-          [...Array(4)].map((_, i) => (
-            <div key={i} className="glass h-[400px] rounded-[3.5rem] border border-white/5 skeleton"></div>
-          ))
-        ) : reports.length > 0 ? (
-          reports.map((report, idx) => {
-            const visuals = getThreatVisuals(report.threatLevel);
+          [...Array(4)].map((_, i) => <div key={i} className="glass h-[400px] rounded-[3.5rem] border border-white/20 animate-pulse bg-white/5"></div>)
+        ) : reports.map((report, idx) => {
+            const visuals = threatVisuals(report.threatLevel);
             return (
-              <div key={idx} className={`group glass p-12 pl-20 rounded-[3.5rem] border border-white/5 ${visuals.glow} transition-all duration-700 flex flex-col space-y-8 relative overflow-hidden bg-slate-900/10`}>
-                <div className={`absolute top-0 left-0 w-3.5 h-full ${visuals.solid} opacity-70 shadow-2xl`}>
-                  <div className="absolute top-0 left-0 w-full h-1/4 bg-white/50 animate-[scanning_4s_linear_infinite]"></div>
-                </div>
-                <div className="absolute top-0 right-0 p-10 flex items-center gap-4">
-                  <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border ${visuals.text} ${visuals.border} ${visuals.bg} flex items-center gap-3 shadow-xl`}>
-                    <span className={`w-2 h-2 rounded-full ${visuals.solid} animate-pulse`}></span>
-                    {visuals.status}
-                  </span>
-                </div>
+              <div key={idx} className={`group glass p-12 pl-20 rounded-[3.5rem] border border-white/20 ${visuals.glow} transition-all duration-700 flex flex-col space-y-8 relative overflow-hidden bg-white/5 backdrop-blur-md`}>
+                <div className={`absolute top-0 left-0 w-3.5 h-full ${visuals.solid} opacity-60`}></div>
+                <span className={`absolute top-10 right-10 px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border ${visuals.text} ${visuals.border} ${visuals.bg}`}>{visuals.status}</span>
                 <div className="space-y-6">
-                  <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest border-b border-white/5 pb-3 flex items-center justify-between font-black">
-                    <span>DOSSIER_REF: GMT-{idx + 7000}</span>
-                    <span className={`${visuals.text} uppercase`}>{report.threatLevel} PRIORITY</span>
-                  </div>
                   <div className="flex items-start gap-6">
-                    <span className="text-4xl mt-1 drop-shadow-2xl">{visuals.icon}</span>
-                    <div className="space-y-3 flex-1">
-                      <h3 className="text-3xl font-heading font-black text-white group-hover:text-accent transition-colors uppercase leading-[1.05] tracking-tighter">{report.title}</h3>
-                      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5 mt-4">
-                        <div 
-                          className={`h-full ${visuals.solid} transition-all duration-[3s] ease-out shadow-[0_0_20px_${visuals.solid}]`} 
-                          style={{ width: `${visuals.intensity}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                    <span className="text-4xl mt-1">{visuals.icon}</span>
+                    <h3 className="text-3xl font-heading font-black text-white uppercase leading-[1.05] tracking-tighter">{report.title}</h3>
                   </div>
-                  <p className="text-xs text-slate-400 font-mono leading-relaxed bg-black/40 p-6 rounded-[2rem] border border-white/5 italic shadow-inner">
-                    {report.summary}
-                  </p>
+                  <p className="text-xs text-slate-400 font-mono leading-relaxed glass p-6 rounded-[2rem] border border-white/20 bg-white/5">{report.summary}</p>
                 </div>
                 <div className="flex-1 space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-1.5 h-4 ${visuals.solid}`}></div>
-                    <h4 className="text-[11px] font-black text-accent uppercase tracking-[0.3em]">NEURAL_INSIGHTS</h4>
-                  </div>
+                  <h4 className="text-[11px] font-black text-accent uppercase tracking-[0.3em]">Key Points</h4>
                   <ul className="space-y-4">
                     {report.keyInsights.map((insight, i) => (
-                      <li key={i} className="flex gap-5 text-[11px] font-mono text-slate-300 items-start group/li">
-                        <span className={`${visuals.text} font-black bg-white/5 w-6 h-6 rounded-lg flex items-center justify-center border border-white/5`}>{i + 1}</span>
-                        <span className="leading-relaxed group-hover/li:text-white transition-colors">{insight}</span>
+                      <li key={i} className="flex gap-5 text-[11px] font-mono text-slate-300 items-start">
+                        <span className={`${visuals.text} font-black`}>{i + 1}.</span>
+                        <span>{insight}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="pt-8 border-t border-white/5 flex justify-between items-center">
-                  <div className="flex gap-4">
-                    {report.groundingSources.map((source, i) => (
-                      <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black text-slate-500 hover:text-white uppercase transition-all underline decoration-accent/40 bg-white/5 px-4 py-2 rounded-xl border border-white/5 hover:bg-accent/10">SOURCE_{i+1}</a>
-                    ))}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[9px] font-mono text-slate-600 block uppercase tracking-widest font-black">TIMESTAMP</span>
-                    <span className="text-xs font-mono text-white font-black tracking-tighter">{new Date(report.lastUpdated).toLocaleTimeString()} GMT</span>
-                  </div>
-                </div>
               </div>
             );
-          })
-        ) : (
-          <div className="col-span-full py-52 text-center space-y-8 opacity-25">
-            <div className="text-8xl text-slate-700 animate-pulse">📂</div>
-            <p className="text-xs font-mono uppercase tracking-[0.6em] font-black">Neural Archives Awaiting Command</p>
-          </div>
-        )}
+          })}
       </div>
 
       <style>{`
-        @keyframes scanning {
-          0% { transform: translateY(-100%); opacity: 0; }
-          20% { opacity: 1; }
-          80% { opacity: 1; }
-          100% { transform: translateY(600%); opacity: 0; }
-        }
         @keyframes signal-ping {
           0% { transform: scale(1); opacity: 0.9; stroke-width: 2.5; }
           100% { transform: scale(4.5); opacity: 0; stroke-width: 0.5; }
@@ -581,29 +520,7 @@ const IntelligenceTerminal: React.FC<IntelligenceTerminalProps> = ({ intelServic
           animation: spin-slow 12s linear infinite;
           transform-origin: center;
         }
-        .glitch-text {
-          position: relative;
-        }
-        .glitch-text::after {
-          content: attr(data-text);
-          position: absolute;
-          left: 2px;
-          text-shadow: -1px 0 #ff00c1;
-          top: 0;
-          color: white;
-          background: transparent;
-          overflow: hidden;
-          clip: rect(0, 900px, 0, 0);
-          animation: noise-anim 2s infinite linear alternate-reverse;
-        }
-        @keyframes noise-anim {
-          0% { clip: rect(10px, 9999px, 50px, 0); }
-          50% { clip: rect(80px, 9999px, 10px, 0); }
-          100% { clip: rect(30px, 9999px, 90px, 0); }
-        }
       `}</style>
     </div>
   );
-};
-
-export default IntelligenceTerminal;
+}

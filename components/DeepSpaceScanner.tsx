@@ -32,23 +32,21 @@ const DeepSpaceScanner: React.FC<DeepSpaceScannerProps> = ({ intelService }) => 
       <div className="glass p-10 rounded-[3rem] border border-white/10 relative overflow-hidden bg-slate-900/10">
         <div className="flex justify-between items-center relative z-10">
           <div>
-            <h2 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">Deep_Space_Object_Detection</h2>
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mt-2">Million Mile Range Signal // v1.0.4</p>
+            <h2 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">Space Scanner</h2>
+            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mt-2">Find objects in outer space</p>
           </div>
           <button 
             onClick={performScan} 
             disabled={scanning}
             className="px-10 py-4 bg-accent text-white font-heading font-black text-xs uppercase tracking-widest rounded-2xl shadow-accent disabled:opacity-50"
           >
-            {scanning ? 'SCANNING_CELESTIAL_GRID...' : 'INITIATE_LONG_RANGE_SCAN'}
+            {scanning ? 'Scanning...' : 'Start Scan'}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1">
         <div className="lg:col-span-2 glass rounded-[3rem] p-10 relative overflow-hidden bg-black/40 border border-white/5">
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #3b82f6 1px, transparent 1px)', backgroundSize: '60px 60px' }}></div>
-          
           <div className="relative z-10 grid grid-cols-2 gap-6">
             {objects.map(obj => (
               <div 
@@ -63,39 +61,28 @@ const DeepSpaceScanner: React.FC<DeepSpaceScannerProps> = ({ intelService }) => 
                   <span className="px-2 py-0.5 bg-accent/20 rounded text-[7px] text-accent font-black uppercase">{obj.type}</span>
                 </div>
                 <h4 className="text-lg font-heading font-black text-white uppercase tracking-tighter">{obj.name}</h4>
-                <div className="mt-4 h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-accent animate-pulse" style={{ width: `${Math.random() * 100}%` }}></div>
-                </div>
               </div>
             ))}
           </div>
         </div>
 
         <div className="glass rounded-[3rem] p-10 flex flex-col space-y-8 bg-slate-900/20 border border-white/5">
-          <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest border-b border-white/10 pb-4">TELEMETRY_DATA_FIX</h3>
+          <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest border-b border-white/10 pb-4">Object Details</h3>
           {selected ? (
             <div className="space-y-6 animate-in fade-in duration-500">
               <div className="p-5 bg-black/40 rounded-2xl border border-white/5 font-mono">
                 <div className="flex justify-between py-2 border-b border-white/5">
-                  <span className="text-[9px] text-slate-500">RANGE</span>
-                  <span className="text-xs text-white">{selected.rangeKm.toLocaleString()} KM</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-white/5">
-                  <span className="text-[9px] text-slate-500">VELOCITY</span>
+                  <span className="text-[9px] text-slate-500">SPEED</span>
                   <span className="text-xs text-emerald-400">{selected.velocity.toLocaleString()} MPH</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-[9px] text-slate-500">3D_COORD</span>
-                  <span className="text-[10px] text-blue-400">X:{selected.coordinates.x} Y:{selected.coordinates.y} Z:{selected.coordinates.z}</span>
                 </div>
               </div>
               <p className="text-[10px] font-mono text-slate-400 leading-relaxed italic">
-                Sensor data confirms object presence millions of miles from Earth's core. Signal stability remains volatile.
+                Data shows an object far from Earth. We are tracking it.
               </p>
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center opacity-20 text-center">
-              <p className="text-[10px] font-mono uppercase tracking-widest">Awaiting_Target_Selection</p>
+              <p className="text-[10px] font-mono uppercase tracking-widest">Select an object</p>
             </div>
           )}
         </div>

@@ -7,64 +7,93 @@
     <title>GMT GLOBAL | Deep Space Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <script>
+        // Dynamic Neural Theme Engine
+        const THEMES = [
+            { name: 'NEURAL_BLUE', primary: '#3b82f6', glow: 'rgba(59, 130, 246, 0.3)', bgSecondary: 'rgba(30, 58, 138, 0.2)' },
+            { name: 'VOID_PURPLE', primary: '#a855f7', glow: 'rgba(168, 85, 247, 0.3)', bgSecondary: 'rgba(88, 28, 135, 0.2)' },
+            { name: 'BIO_EMERALD', primary: '#10b981', glow: 'rgba(16, 185, 129, 0.3)', bgSecondary: 'rgba(6, 78, 59, 0.2)' },
+            { name: 'SOLAR_AMBER', primary: '#f59e0b', glow: 'rgba(245, 158, 11, 0.3)', bgSecondary: 'rgba(120, 53, 15, 0.2)' },
+            { name: 'CRIMSON_RECON', primary: '#ef4444', glow: 'rgba(239, 68, 68, 0.3)', bgSecondary: 'rgba(127, 29, 29, 0.2)' }
+        ];
+
+        // Pick a random theme or restore from session
+        const selectedTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+        
+        document.documentElement.style.setProperty('--accent-primary', selectedTheme.primary);
+        document.documentElement.style.setProperty('--accent-glow', selectedTheme.glow);
+        document.documentElement.style.setProperty('--bg-secondary-glow', selectedTheme.bgSecondary);
+
+        // Configure Tailwind to use the CSS variable
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                accent: 'var(--accent-primary)',
+                'accent-glow': 'var(--accent-glow)',
+              },
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                mono: ['JetBrains Mono', 'monospace'],
+                heading: ['Orbitron', 'sans-serif'],
+              }
+            }
+          }
+        }
+    </script>
     <style>
         :root {
-            --accent-primary: #3b82f6; 
-            --accent-glow: rgba(59, 130, 246, 0.3);
             --bg-dark: #020617;
-            --glass-bg: rgba(15, 23, 42, 0.2); /* Ultra Transparent */
-            --glass-border: rgba(255, 255, 255, 0.05);
+            --glass-bg: rgba(15, 23, 42, 0.3); 
+            --glass-border: rgba(255, 255, 255, 0.08);
             --text-main: #f8fafc;
             --text-dim: #94a3b8;
+            /* Variables injected by script: --accent-primary, --accent-glow, --bg-secondary-glow */
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
-            /* Galaxy/Celestial Background */
             background-image: 
-                radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, var(--bg-secondary-glow) 0%, transparent 70%),
+                radial-gradient(circle at 20% 30%, var(--accent-glow) 0%, transparent 50%),
                 radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
                 url('https://www.transparenttextures.com/patterns/stardust.png');
+            background-attachment: fixed;
             color: var(--text-main);
             overflow: hidden;
             height: 100vh;
-            transition: background 1s ease;
         }
 
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .font-heading { font-family: 'Orbitron', sans-serif; }
-        
         .glass {
             background: var(--glass-bg);
-            backdrop-filter: blur(12px) saturate(200%); /* High transparency + blur */
+            backdrop-filter: blur(16px) saturate(180%);
             border: 1px solid var(--glass-border);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .glass:hover {
-            background: rgba(15, 23, 42, 0.3);
+            background: rgba(15, 23, 42, 0.4);
             border-color: var(--accent-primary);
         }
 
-        /* Motion and Fading for Windows */
         .window-entry {
-            animation: window-fade-in 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            animation: window-fade-in 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
 
         @keyframes window-fade-in {
-            from { opacity: 0; transform: translateY(20px) scale(0.98); filter: blur(10px); }
+            from { opacity: 0; transform: translateY(30px) scale(0.96); filter: blur(15px); }
             to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
         }
 
-        .galaxy-nav {
-            position: absolute;
+        .galaxy-nav-bg {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 0;
+            z-index: -1;
             overflow: hidden;
         }
 
@@ -77,18 +106,23 @@
         }
 
         @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.2); }
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.3); }
         }
 
         .scanline {
             width: 100%;
             height: 100%;
             z-index: 100;
-            background: linear-gradient(to bottom, transparent 50%, rgba(255, 255, 255, 0.02) 51%);
+            background: linear-gradient(to bottom, transparent 50%, rgba(255, 255, 255, 0.01) 51%);
             background-size: 100% 4px;
-            position: absolute;
+            position: fixed;
             pointer-events: none;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
         }
 
         ::-webkit-scrollbar { width: 4px; }
@@ -97,29 +131,31 @@
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "recharts": "https://esm.sh/recharts@2.12.7"
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
+    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "recharts": "https://esm.sh/recharts@2.15.0?deps=react@19.0.0,react-dom@19.0.0"
   }
 }
 </script>
 </head>
 <body>
-    <div class="galaxy-nav" id="stars"></div>
+    <div class="galaxy-nav-bg" id="stars"></div>
+    <div class="scanline"></div>
     <div id="root"></div>
     <script>
         const starsContainer = document.getElementById('stars');
-        for (let i = 0; i < 150; i++) {
+        for (let i = 0; i < 200; i++) {
             const star = document.createElement('div');
             star.className = 'star';
-            const size = Math.random() * 2;
+            const size = Math.random() * 2.5;
             star.style.width = size + 'px';
             star.style.height = size + 'px';
             star.style.top = Math.random() * 100 + '%';
             star.style.left = Math.random() * 100 + '%';
-            star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
+            star.style.setProperty('--duration', (Math.random() * 4 + 2) + 's');
             starsContainer.appendChild(star);
         }
     </script>

@@ -3,8 +3,8 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NewsItem, IntelligenceReport, IntelligenceSignal, CyberThreat, DeepSpaceObject, DecodedSignal, MarketData, InternetStats, Influencer } from '../types';
 
 const TEXT_MODEL = 'gemini-3-flash-preview';
+const PRO_MODEL = 'gemini-3-pro-preview';
 
-// Fixed missing exported member requested by SnickRecon.tsx
 export interface SocialIntercept {
   id: string;
   user: string;
@@ -16,7 +16,122 @@ export interface SocialIntercept {
 export class IntelligenceService {
   constructor() {}
 
-  // Using compliant generateContent with response.text property
+  async translateText(text: string, targetLanguage: string): Promise<string> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const prompt = `Translate the following text to ${targetLanguage}. Return ONLY the translated text, no other comments: "${text}"`;
+      const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt
+      });
+      return response.text || "Translation failed.";
+    } catch (e) {
+      console.error("Translation error:", e);
+      return "Translation failed.";
+    }
+  }
+
+  async getGeopoliticalPrediction(query: string): Promise<{ prediction: string, riskLevel: number, factors: string[] }> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const prompt = `Act as a Geopolitical Oracle. Analyze the future implications of: ${query}. 
+      Provide a detailed reasoning-based prediction, a risk level (0-100), and key driving factors.
+      Return JSON: { "prediction": string, "riskLevel": number, "factors": string[] }`;
+
+      const response = await ai.models.generateContent({
+        model: PRO_MODEL,
+        contents: prompt,
+        config: {
+          thinkingConfig: { thinkingBudget: 15000 },
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              prediction: { type: Type.STRING },
+              riskLevel: { type: Type.NUMBER },
+              factors: { type: Type.ARRAY, items: { type: Type.STRING } }
+            }
+          }
+        }
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (e) {
+      return { prediction: "Unable to calculate future trajectories.", riskLevel: 50, factors: ["Incomplete data"] };
+    }
+  }
+
+  async getGlobalSentiment(): Promise<{ region: string, sentiment: string, score: number, color: string }[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const prompt = `Analyze current global news sentiment. Provide scores for 6 major world regions.
+      Return JSON array: [{ "region": string, "sentiment": "VOLATILE" | "STABLE" | "OPTIMISTIC", "score": number, "color": string }]`;
+
+      const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                region: { type: Type.STRING },
+                sentiment: { type: Type.STRING },
+                score: { type: Type.NUMBER },
+                color: { type: Type.STRING }
+              }
+            }
+          }
+        }
+      });
+      return JSON.parse(response.text || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async getLocalizedNews(location: string): Promise<NewsItem[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const prompt = `Provide the most recent, breaking news and intelligence specific to the city or country: ${location}. 
+      Include critical events, political shifts, or major local updates from the last 24-48 hours.
+      Return JSON array: [{title, content, sentiment, location}]`;
+
+      const response = await ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                content: { type: Type.STRING },
+                sentiment: { type: Type.STRING },
+                location: { type: Type.STRING }
+              }
+            }
+          }
+        }
+      });
+
+      return JSON.parse(response.text || "[]").map((item: any, i: number) => ({
+        id: `LOC-${Date.now()}-${i}`,
+        ...item,
+        timestamp: new Date().toISOString(),
+        sources: [{ uri: 'https://news.google.com', title: `Local Intel: ${location}` }]
+      }));
+    } catch (e) {
+      console.error("Localized news error:", e);
+      return [];
+    }
+  }
+
   async scanDeepSpace(): Promise<DeepSpaceObject[]> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -61,7 +176,6 @@ export class IntelligenceService {
     }
   }
 
-  // Using compliant generateContent and Type enum
   async decodeEncryptedSignal(cipher: string): Promise<DecodedSignal> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -93,7 +207,6 @@ export class IntelligenceService {
     }
   }
 
-  // Updated to use googleSearch tool and responseSchema
   async getLatestGlobalUpdates(category: string): Promise<NewsItem[]> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -127,7 +240,6 @@ export class IntelligenceService {
     } catch (e) { return []; }
   }
 
-  // Updated to use googleSearch and Type enum
   async getSatelliteSignals(lat?: number, lng?: number): Promise<IntelligenceSignal[]> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -162,7 +274,6 @@ export class IntelligenceService {
     }
   }
 
-  // Fixed generateContent usage
   async scanForCyberIntruders(): Promise<CyberThreat[]> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const response = await ai.models.generateContent({
@@ -191,7 +302,6 @@ export class IntelligenceService {
     return JSON.parse(response.text || "[]");
   }
 
-  // Fixed generateContent usage with googleSearch
   async generateIntelligenceDossiers(query: string): Promise<IntelligenceReport[]> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const response = await ai.models.generateContent({
@@ -231,7 +341,6 @@ export class IntelligenceService {
     return JSON.parse(response.text || "[]");
   }
 
-  // Fixed missing method requested by MarketHub.tsx
   async getMarketIntelligence(): Promise<MarketData> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const response = await ai.models.generateContent({
@@ -269,7 +378,6 @@ export class IntelligenceService {
     return JSON.parse(response.text || "{}");
   }
 
-  // Fixed missing method requested by MarketHub.tsx
   async getInternetStats(): Promise<{stats: InternetStats, influencers: Influencer[]}> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const response = await ai.models.generateContent({
@@ -308,7 +416,6 @@ export class IntelligenceService {
     return JSON.parse(response.text || "{}");
   }
 
-  // Fixed missing method requested by NewsCard.tsx for audio generation
   async generateBroadcastAudio(text: string): Promise<string | undefined> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });

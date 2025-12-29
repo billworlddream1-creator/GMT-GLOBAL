@@ -9,6 +9,20 @@ export interface UserActivityRecord {
   timestamp: string;
 }
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  rankXp: number;
+  completedBounties: string[];
+  connections: {
+    totalConnections: number;
+    monthlyConnections: number;
+    referralRewardEligible: boolean;
+    tier2Eligible?: boolean;
+  };
+}
+
 export interface DeepSpaceObject {
   id: string;
   name: string;
@@ -27,7 +41,30 @@ export interface DecodedSignal {
   origin: string;
 }
 
-export type ViewType = 'feed' | 'intelligence' | 'saved' | 'deep-space' | 'tech-power' | 'space-sat' | 'world-live' | 'admin' | 'subscription' | 'nexus-link' | 'investment' | 'partnership' | 'market' | 'snicking' | 'security';
+export type ViewType = 
+  | 'feed' 
+  | 'intelligence' 
+  | 'saved' 
+  | 'deep-space' 
+  | 'galaxy-nav' 
+  | 'tech-power' 
+  | 'space-sat' 
+  | 'world-live' 
+  | 'admin' 
+  | 'subscription' 
+  | 'nexus-link' 
+  | 'investment' 
+  | 'partnership' 
+  | 'market' 
+  | 'snicking' 
+  | 'security' 
+  | 'translator' 
+  | 'chat' 
+  | 'games'
+  | 'briefing'
+  | 'oracle'
+  | 'sentiments'
+  | 'blackbox';
 
 export interface NewsItem {
   id: string;
@@ -50,6 +87,7 @@ export interface IntelligenceSignal {
   description: string;
   urgency: 'LOW' | 'MEDIUM' | 'HIGH';
   groundingUri?: string;
+  isVanishing?: boolean;
 }
 
 export interface CyberThreat {
@@ -72,8 +110,9 @@ export interface IntelligenceReport {
   lastUpdated: string;
 }
 
-// Added missing types to fix compilation errors in App.tsx, AdminConsole.tsx, etc.
 export type NewsCategory = 'BREAKING' | 'POLITICS' | 'TECH' | 'ECONOMY' | 'SECURITY' | 'SCIENCE';
+
+export type InvestmentSector = 'CYBER_DEFENSE' | 'ORBITAL_TECH' | 'DEEP_SPACE' | 'NEURAL_RESEARCH' | 'GLOBAL_LOGISTICS';
 
 export interface Investment {
   id: string;
@@ -81,7 +120,10 @@ export interface Investment {
   amount: number;
   durationMonths: number;
   expectedReturn: number;
+  sector: InvestmentSector;
+  riskLevel: 'LOW' | 'MODERATE' | 'SPECULATIVE';
   status: 'ACTIVE' | 'PAID' | 'REFUNDED';
+  timestamp: string;
 }
 
 export interface PaymentSettings {
@@ -90,7 +132,7 @@ export interface PaymentSettings {
   cryptoWallet: string;
 }
 
-export type PartnerRole = 'JUNIOR_AGENT' | 'FIELD_OPERATIVE' | 'STRATEGIC_ASSET' | 'NEXUS_OVERLORD';
+export type PartnerRole = 'COVERT_ASSET' | 'FIELD_OPERATIVE' | 'STRATEGIC_ASSET' | 'NEXUS_OVERLORD' | 'GLOBAL_HEGEMON';
 
 export interface Partnership {
   id: string;
@@ -102,18 +144,6 @@ export interface Partnership {
   startDate: string;
   expiryDate: string;
   status: 'ACTIVE' | 'PAID' | 'REFUNDED';
-}
-
-export interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  connections: {
-    totalConnections: number;
-    monthlyConnections: number;
-    referralRewardEligible: boolean;
-    tier2Eligible?: boolean;
-  };
 }
 
 export interface MarketData {
@@ -138,6 +168,8 @@ export interface Influencer {
 
 export const LEVEL_REQUIREMENTS: Record<ViewType, AccessLevel> = {
   'feed': 'FREE',
+  'briefing': 'FREE',
+  'sentiments': 'FREE',
   'saved': 'FREE',
   'subscription': 'FREE',
   'investment': 'FREE',
@@ -145,13 +177,19 @@ export const LEVEL_REQUIREMENTS: Record<ViewType, AccessLevel> = {
   'world-live': 'FREE',
   'market': 'FREE',
   'partnership': 'FREE',
+  'translator': 'FREE',
+  'chat': 'FREE',
+  'games': 'FREE',
   'snicking': 'FIELD_AGENT',
   'intelligence': 'FIELD_AGENT',
   'tech-power': 'FIELD_AGENT',
+  'oracle': 'FIELD_AGENT',
   'security': 'INTEL_DIRECTOR',
   'admin': 'INTEL_DIRECTOR',
   'space-sat': 'INTEL_DIRECTOR',
-  'deep-space': 'NEXUS_ARCHITECT'
+  'blackbox': 'INTEL_DIRECTOR',
+  'deep-space': 'NEXUS_ARCHITECT',
+  'galaxy-nav': 'NEXUS_ARCHITECT'
 };
 
 export const LEVEL_WEIGHT: Record<AccessLevel, number> = {
