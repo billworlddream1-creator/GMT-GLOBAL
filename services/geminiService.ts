@@ -31,7 +31,23 @@ export class IntelligenceService {
     this.cache.set(key, { data, timestamp: Date.now() });
   }
 
-  // Guidelines: Search Grounding output response.text may not be in JSON format; do not attempt to parse it as JSON.
+  async analyzeNewsContent(content: string): Promise<string> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Perform a high-level strategic intelligence analysis of the following report. Identify geopolitical risks, socio-economic impact, and provide a "Tactical Outlook". Keep it structured as a professional briefing. DATA: "${content}"`,
+        config: {
+          systemInstruction: "You are the GMT Global Strategic AI. Provide deep-logic analysis that goes beyond the surface headlines. Be professional, slightly ominous, and highly tactical."
+        }
+      });
+      return response.text || "Strategic analysis inconclusive. Neural patterns scattered.";
+    } catch (e) {
+      console.error("News analysis failed:", e);
+      return "Strategic analysis offline. Signal integrity compromised.";
+    }
+  }
+
   async getHistoricalSentimentAnalysis(): Promise<{ history: any[], summary: string }> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -39,7 +55,6 @@ export class IntelligenceService {
         model: FLASH_MODEL,
         contents: "Generate a simulated 24-hour historical sentiment log (hourly points) for 'Eurasia' and 'Africa' based on current real-world trends. Return ONLY valid JSON: { \"history\": [{ \"hour\": \"00:00\", \"Eurasia\": 75, \"Africa\": 60 }, ...], \"summary\": \"string\" }",
         config: {
-          // Removed googleSearch to allow reliable JSON parsing per guidelines
           responseMimeType: "application/json"
         }
       });
@@ -58,7 +73,6 @@ export class IntelligenceService {
         contents: "Find the 5 most critical global cybersecurity incidents from the last 48 hours. Focus on high-impact infrastructure exploits.",
         config: {
           tools: [{ googleSearch: {} }],
-          // Guidelines: Do not parse JSON when search is enabled. Returning a simplified structure for UI stability.
         }
       });
       
@@ -89,9 +103,7 @@ export class IntelligenceService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: PRO_MODEL,
-        contents: `Perform a simulated high-clearance security audit on the external architecture of ${targetUrl}. 
-        Identify potential vulnerabilities based on standard web stack weaknesses (OWASP), server misconfigurations, and outdated protocols.
-        Return JSON: { \"target\": \"string\", \"score\": number, \"threats\": [{ \"type\": \"string\", \"severity\": \"CRITICAL\" | \"HIGH\" | \"MEDIUM\" | \"LOW\", \"description\": \"string\", \"remediation\": \"string\" }], \"metadata\": { \"server\": \"string\", \"ssl\": \"string\", \"latency\": \"string\" } }`,
+        contents: `Perform a simulated high-clearance security audit on the external architecture of ${targetUrl}. Identify potential vulnerabilities based on OWASP standards. Return JSON: { \"target\": \"string\", \"score\": number, \"threats\": [{ \"type\": \"string\", \"severity\": \"CRITICAL\" | \"HIGH\" | \"MEDIUM\" | \"LOW\", \"description\": \"string\", \"remediation\": \"string\" }], \"metadata\": { \"server\": \"string\", \"ssl\": \"string\", \"latency\": \"string\" } }`,
         config: { 
           responseMimeType: "application/json",
           thinkingConfig: { thinkingBudget: 16000 }
@@ -127,9 +139,8 @@ export class IntelligenceService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: FLASH_MODEL,
-        contents: `Generate a tactical intelligence dossier for: \"${name}\". Include occupation, recent major activity, influence score (0-100), risk rating (STABLE, ELEVATED, CRITICAL), and character sketch. Return JSON: { \"name\": \"string\", \"occupation\": \"string\", \"recentActivity\": \"string\", \"influenceScore\": number, \"riskRating\": \"STABLE\" | \"ELEVATED\" | \"CRITICAL\", \"newsHighlights\": [{ \"title\": \"string\", \"uri\": \"string\" }], \"biometricSummary\": \"string\" }`,
+        contents: `Generate a tactical intelligence dossier for: \"${name}\". Return JSON: { \"name\": \"string\", \"occupation\": \"string\", \"recentActivity\": \"string\", \"influenceScore\": number, \"riskRating\": \"STABLE\" | \"ELEVATED\" | \"CRITICAL\", \"newsHighlights\": [{ \"title\": \"string\", \"uri\": \"string\" }], \"biometricSummary\": \"string\" }`,
         config: {
-          // Removed googleSearch to guarantee valid JSON response per guidelines
           responseMimeType: "application/json"
         }
       });
@@ -150,7 +161,6 @@ export class IntelligenceService {
         model: PRO_MODEL,
         contents: `Generate 4 detailed intelligence dossiers for the topic: ${query}. Return JSON array: [{ \"title\": \"string\", \"summary\": \"string\", \"keyInsights\": [\"string\"], \"threatLevel\": \"MINIMAL\" | \"ELEVATED\" | \"SEVERE\", \"groundingSources\": [{ \"uri\": \"string\", \"title\": \"string\" }] }]`,
         config: {
-          // Removed googleSearch to ensure JSON compliance
           responseMimeType: "application/json"
         }
       });
@@ -200,10 +210,8 @@ export class IntelligenceService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: FLASH_MODEL,
-        contents: `Provide current Bitcoin price, a 6-point 24-hour history, and conversion rates for USD, EUR, GBP, JPY.
-        Return JSON: { \"bitcoinPrice\": number, \"bitcoinHistory\": [{ \"time\": \"string\", \"price\": number }], \"conversions\": { \"USD\": number, \"EUR\": number, \"GBP\": number, \"JPY\": number } }`,
+        contents: `Provide current Bitcoin price and history. Return JSON: { \"bitcoinPrice\": number, \"bitcoinHistory\": [{ \"time\": \"string\", \"price\": number }], \"conversions\": { \"USD\": number, \"EUR\": number, \"GBP\": number, \"JPY\": number } }`,
         config: {
-          // Removed googleSearch to ensure valid JSON output
           responseMimeType: "application/json"
         }
       });
@@ -219,8 +227,7 @@ export class IntelligenceService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: FLASH_MODEL,
-        contents: `Generate global internet reach stats (billions) and 5 trending influencers.
-        Return JSON: { \"stats\": { \"daily\": number, \"weekly\": number, \"monthly\": number, \"yearly\": number }, \"influencers\": [{ \"name\": \"string\", \"reach\": \"string\", \"platform\": \"string\", \"category\": \"string\" }] }`,
+        contents: `Generate global internet reach stats (billions) and 5 trending influencers. Return JSON: { \"stats\": { \"daily\": number, \"weekly\": number, \"monthly\": number, \"yearly\": number }, \"influencers\": [{ \"name\": \"string\", \"reach\": \"string\", \"platform\": \"string\", \"category\": \"string\" }] }`,
         config: { responseMimeType: "application/json" }
       });
       return JSON.parse(response.text || "{}");
@@ -235,10 +242,8 @@ export class IntelligenceService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: FLASH_MODEL,
-        contents: `Analyze current emotional sentiment for 6 major world regions. Include center lat/lng.
-        Return JSON array: [{ \"region\": \"string\", \"lat\": number, \"lng\": number, \"sentiment\": \"STABLE\" | \"VOLATILE\" | \"CRITICAL\", \"score\": number, \"color\": \"string (hex)\" }]`,
+        contents: `Analyze current emotional sentiment for 6 major world regions. Return JSON array: [{ \"region\": \"string\", \"lat\": number, \"lng\": number, \"sentiment\": \"STABLE\" | \"VOLATILE\" | \"CRITICAL\", \"score\": number, \"color\": \"string (hex)\" }]`,
         config: {
-          // Removed googleSearch to guarantee JSON output
           responseMimeType: "application/json"
         }
       });
@@ -254,10 +259,8 @@ export class IntelligenceService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: PRO_MODEL,
-        contents: `Analyze story for accuracy: \"${title}\" CONTENT: \"${content}\". 
-        Return JSON: { \"truthScore\": number, \"confidence\": \"HIGH\" | \"MEDIUM\" | \"LOW\", \"analysis\": \"string\", \"sources\": [{ \"title\": \"string\", \"uri\": \"string\" }] }`,
+        contents: `Analyze story for accuracy: \"${title}\" CONTENT: \"${content}\". Return JSON: { \"truthScore\": number, \"confidence\": \"HIGH\" | \"MEDIUM\" | \"LOW\", \"analysis\": \"string\", \"sources\": [{ \"title\": \"string\", \"uri\": \"string\" }] }`,
         config: {
-          // Removed googleSearch to ensure JSON structure
           thinkingConfig: { thinkingBudget: 32768 },
           responseMimeType: "application/json"
         }
@@ -287,7 +290,6 @@ export class IntelligenceService {
         contents: `Fetch breaking world news in category: ${category}.`,
         config: {
           tools: [{ googleSearch: {} }],
-          // Guidelines: Avoid JSON parsing when search is active
         }
       });
 
@@ -316,17 +318,17 @@ export class IntelligenceService {
     }
   }
 
-  async generateBroadcastAudio(text: string): Promise<string> {
+  async generateBroadcastAudio(text: string, voiceName: string = 'Kore'): Promise<string> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: TTS_MODEL,
-        contents: [{ parts: [{ text: `Authorized Intelligence Officer voice: ${text}` }] }],
+        contents: [{ parts: [{ text: `Broadcast text in tactical tone: ${text}` }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
+              prebuiltVoiceConfig: { voiceName },
             },
           },
         },
@@ -345,8 +347,7 @@ export class IntelligenceService {
         model: FLASH_MODEL,
         contents: `Decrypt this tactical cipher: \"${cipher}\". Return JSON: {id, original, decrypted, confidence, origin}`,
         config: { 
-          responseMimeType: "application/json",
-          thinkingConfig: { thinkingBudget: 0 }
+          responseMimeType: "application/json"
         },
       });
       return JSON.parse(response.text || "{}");
@@ -389,7 +390,6 @@ export class IntelligenceService {
         model: PRO_MODEL,
         contents: `Forecast geopolitical outcomes for: ${query}. Return JSON: {prediction, riskLevel, factors: []}`,
         config: { 
-          // Removed googleSearch to guarantee JSON output
           thinkingConfig: { thinkingBudget: 16000 },
           responseMimeType: "application/json" 
         }
@@ -403,11 +403,9 @@ export class IntelligenceService {
   async getSatelliteSignals(lat?: number, lng?: number): Promise<IntelligenceSignal[]> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const contents = `Simulate 10 orbital intelligence signals. ${lat && lng ? `Focus near Lat: ${lat}, Lng: ${lng}.` : ''} JSON array.`;
-      
       const response = await ai.models.generateContent({
         model: FLASH_MODEL,
-        contents,
+        contents: `Simulate 10 orbital intelligence signals near Lat: ${lat}, Lng: ${lng}. JSON array.`,
         config: { responseMimeType: "application/json" }
       });
       return JSON.parse(response.text || "[]");

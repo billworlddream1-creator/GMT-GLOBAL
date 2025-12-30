@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { IntelligenceService } from '../services/geminiService';
-import { IntelligenceSignal } from '../types';
+import { IntelligenceSignal, DecodedSignal } from '../types';
 import { playUISound } from '../utils/audioUtils';
 
 interface SatelliteUplinkProps {
@@ -19,6 +19,10 @@ const SatelliteUplink: React.FC<SatelliteUplinkProps> = ({ intelService }) => {
   
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>('ALL');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
+  const [selectedSig, setSelectedSig] = useState<IntelligenceSignal | null>(null);
+
+  const [isDecoding, setIsDecoding] = useState(false);
+  const [decodedData, setDecodedData] = useState<DecodedSignal | null>(null);
   
   useEffect(() => {
     const timer = setInterval(() => {
@@ -52,6 +56,26 @@ const SatelliteUplink: React.FC<SatelliteUplinkProps> = ({ intelService }) => {
     }
   };
 
+  const handleDecode = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedSig) return;
+    setIsDecoding(true);
+    setDecodedData(null);
+    playUISound('startup');
+    
+    try {
+      // Use signal metadata as a "cipher" to simulate decoding
+      const cipher = `SIGNAL_ID:${selectedSig.id}_DESC:${selectedSig.description}`;
+      const result = await intelService.decodeEncryptedSignal(cipher);
+      setDecodedData(result);
+      playUISound('success');
+    } catch (err) {
+      console.error("Decoding failure", err);
+    } finally {
+      setIsDecoding(false);
+    }
+  };
+
   const filteredSignals = useMemo(() => {
     return signals.filter(sig => {
       const matchUrgency = urgencyFilter === 'ALL' || sig.urgency === urgencyFilter;
@@ -80,7 +104,7 @@ const SatelliteUplink: React.FC<SatelliteUplinkProps> = ({ intelService }) => {
   );
 
   return (
-    <div className="flex flex-col h-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex flex-col h-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       <div className="glass p-6 rounded-3xl border border-white/5 flex flex-wrap items-center justify-between gap-6 shadow-2xl">
         <div className="flex items-center gap-8">
           <div className="space-y-2">
@@ -128,7 +152,7 @@ const SatelliteUplink: React.FC<SatelliteUplinkProps> = ({ intelService }) => {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 flex-1 overflow-hidden">
         <div className="xl:col-span-2 glass rounded-[3rem] border border-white/10 relative overflow-hidden flex flex-col shadow-2xl group">
-          <div className="absolute top-10 left-10 z-30">
+          <div className="absolute top-10 left-10 z-30 pointer-events-none">
             <h3 className="text-2xl font-heading font-black text-white flex items-center gap-4">
               <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
               ORBITAL_RADAR_FEED
@@ -142,7 +166,6 @@ const SatelliteUplink: React.FC<SatelliteUplinkProps> = ({ intelService }) => {
           <div className="flex-1 relative bg-slate-950 rounded-[2rem] m-6 overflow-hidden shadow-inner border border-white/5">
             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
             
-            {/* CSS-Only Radar Scan - High Performance */}
             <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none opacity-30 animate-[radar_4s_linear_infinite]"
                  style={{ background: 'conic-gradient(from 0deg, transparent, rgba(16, 185, 129, 0.4) 1deg, transparent 90deg)' }}></div>
 
@@ -160,14 +183,10 @@ const SatelliteUplink: React.FC<SatelliteUplinkProps> = ({ intelService }) => {
                   key={sig.id}
                   className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform hover:scale-150 group/sig z-20"
                   style={{ top: `${mapLatToY(sig.lat)}%`, left: `${mapLngToX(sig.lng)}%` }}
-                  onClick={() => sig.groundingUri && window.open(sig.groundingUri, '_blank')}
+                  onClick={() => { setSelectedSig(sig); setDecodedData(null); playUISound('click'); }}
                 >
                   <div className={`absolute inset-0 rounded-full animate-pulse ${sig.urgency === 'HIGH' ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]'}`}></div>
                   <div className={`absolute inset-1 rounded-full ${sig.urgency === 'HIGH' ? 'bg-red-300' : 'bg-emerald-300'}`}></div>
-                  <div className="absolute top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover/sig:opacity-100 transition-opacity bg-black/90 p-3 rounded-2xl border border-white/20 z-50 shadow-2xl min-w-[150px]">
-                    <div className="text-[10px] font-black text-white uppercase mb-1">{sig.location}</div>
-                    <div className="text-[8px] font-mono text-slate-400">{sig.type}</div>
-                  </div>
                 </div>
               ))}
             </div>
@@ -180,36 +199,67 @@ const SatelliteUplink: React.FC<SatelliteUplinkProps> = ({ intelService }) => {
           </div>
         </div>
 
-        <div className="glass rounded-[3rem] border border-white/10 flex flex-col shadow-2xl p-10">
+        <div className="glass rounded-[3rem] border border-white/10 flex flex-col shadow-2xl p-10 relative">
           <div className="flex justify-between items-center mb-10">
             <h3 className="text-2xl font-heading font-black text-white tracking-tighter uppercase">INTELLIGENCE_LOGS</h3>
             <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-mono text-slate-500 font-bold">{filteredSignals.length} FIXED</span>
           </div>
           
-          <div className="space-y-6 overflow-y-auto pr-2 no-scrollbar flex-1">
+          <div className="space-y-6 overflow-y-auto pr-2 no-scrollbar flex-1 pb-20">
              {filteredSignals.map(sig => (
-                <div key={sig.id} className="group p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 hover:border-blue-500/30 transition-all relative overflow-hidden">
+                <div 
+                  key={sig.id} 
+                  onClick={() => { setSelectedSig(sig); setDecodedData(null); playUISound('click'); }}
+                  className={`group p-6 border rounded-3xl transition-all relative overflow-hidden cursor-pointer ${
+                    selectedSig?.id === sig.id ? 'bg-accent/10 border-accent' : 'bg-white/5 border-white/5 hover:bg-white/10'
+                  }`}
+                >
                    <div className="flex justify-between items-start mb-4">
                      <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-widest ${
-                       sig.urgency === 'HIGH' ? 'bg-red-500/20 text-red-500 border border-red-500/20' : 
-                       sig.urgency === 'MEDIUM' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' : 'bg-blue-500/20 text-blue-500 border border-blue-500/20'
+                       sig.urgency === 'HIGH' ? 'bg-red-500/20 text-red-500 border-red-500/20' : 
+                       sig.urgency === 'MEDIUM' ? 'bg-amber-500/20 text-amber-500 border-amber-500/20' : 'bg-blue-500/20 text-blue-500 border-blue-500/20'
                      }`}>{sig.urgency}_URGENCY</span>
                    </div>
-                   <h4 className="text-sm font-black text-white group-hover:text-blue-400 transition-colors uppercase mb-2">{sig.location}</h4>
-                   <p className="text-[11px] text-slate-400 font-mono mb-4 leading-relaxed">{sig.description}</p>
-                   <div className="flex justify-between items-center border-t border-white/5 pt-4">
-                      <span className="text-[9px] font-mono text-slate-500 font-bold">{sig.type.replace('_', ' ')}</span>
-                      {sig.groundingUri && <a href={sig.groundingUri} target="_blank" className="text-[10px] font-black text-emerald-500 hover:text-white uppercase underline">SOURCE</a>}
-                   </div>
+                   <h4 className="text-sm font-black text-white group-hover:text-accent transition-colors uppercase mb-2">{sig.location}</h4>
+                   <p className="text-[11px] text-slate-400 font-mono mb-4 leading-relaxed line-clamp-2">{sig.description}</p>
+                   {selectedSig?.id === sig.id && (
+                     <button 
+                       onClick={handleDecode}
+                       disabled={isDecoding}
+                       className="w-full py-3 mt-2 bg-accent text-white font-heading font-black text-[9px] uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2"
+                     >
+                        {isDecoding ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : '🔐 Decode_Cipher'}
+                     </button>
+                   )}
                 </div>
               ))}
-              {filteredSignals.length === 0 && (
-                <div className="py-20 text-center opacity-30 space-y-4">
-                  <div className="text-5xl">🔭</div>
-                  <div className="text-[10px] font-mono uppercase tracking-[0.4em]">No matching signals detected</div>
-                </div>
-              )}
           </div>
+
+          {decodedData && (
+            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl z-[100] p-10 flex flex-col animate-in fade-in duration-300">
+               <div className="flex justify-between items-center mb-8">
+                  <h4 className="text-sm font-heading font-black text-white uppercase tracking-widest">Decrypted_Output</h4>
+                  <button onClick={() => setDecodedData(null)} className="text-slate-500 hover:text-white transition-colors">✕</button>
+               </div>
+               <div className="flex-1 space-y-6">
+                  <div className="glass p-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/5">
+                     <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest block mb-2">Confidence_Rating: {decodedData.confidence}%</span>
+                     <p className="text-xs font-mono text-slate-200 leading-relaxed italic">"{decodedData.decrypted}"</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[7px] font-mono text-slate-600 block mb-1">Origin_Node</span>
+                        <span className="text-[9px] font-mono text-accent font-black">{decodedData.origin}</span>
+                     </div>
+                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[7px] font-mono text-slate-600 block mb-1">Message_ID</span>
+                        <span className="text-[9px] font-mono text-slate-300">{decodedData.id}</span>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setDecodedData(null)} className="w-full py-4 mt-8 glass border-white/10 text-slate-500 hover:text-white font-heading font-black text-[9px] uppercase tracking-widest rounded-2xl transition-all">Dismiss_Intel</button>
+            </div>
+          )}
         </div>
       </div>
       <style>{`

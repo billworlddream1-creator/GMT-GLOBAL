@@ -37,6 +37,8 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
   const [shareProgress, setShareProgress] = useState(0);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
@@ -54,6 +56,13 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
     }
     return () => clearInterval(interval);
   }, [isVideoGenerating]);
+
+  // Automatically trigger analysis on expansion if not already analyzed
+  useEffect(() => {
+    if (isExpanded && !analysisResult && !isAnalyzing) {
+      handleAnalyzeInternal();
+    }
+  }, [isExpanded, analysisResult, isAnalyzing]);
 
   const formattedDate = useMemo(() => {
     return new Date(news.timestamp).toLocaleDateString('en-US', {
@@ -113,8 +122,13 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
 
     setIsAudioLoading(true);
     playUISound('startup');
+    
+    // Male voices: Puck, Charon. Female voices: Kore, Zephyr.
+    const voices = ['Kore', 'Puck', 'Charon', 'Zephyr'];
+    const randomVoice = voices[Math.floor(Math.random() * voices.length)];
+    
     try {
-      const audioData = await intelService.generateBroadcastAudio(news.content);
+      const audioData = await intelService.generateBroadcastAudio(news.content, randomVoice);
       if (audioData) {
         const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
         const ctx = new AudioContextClass({ sampleRate: 24000 });
@@ -146,6 +160,25 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
     } finally {
       setIsVerifying(false);
     }
+  };
+
+  const handleAnalyzeInternal = async () => {
+    setIsAnalyzing(true);
+    try {
+      const result = await intelService.analyzeNewsContent(news.content);
+      setAnalysisResult(result);
+    } catch (err) {
+      console.error('Analysis error:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleAnalyzeClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded(true);
+    playUISound('startup');
+    handleAnalyzeInternal().then(() => playUISound('success'));
   };
 
   const executeVideoGeneration = async () => {
@@ -268,6 +301,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
           <button onClick={toggleSave} data-tooltip={isSaved ? "Purge Archive" : "Archive Intel"} className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg transition-all ${isSaved ? 'bg-accent text-white' : 'hover:bg-accent/20'}`}>🔖</button>
           <button onClick={startSecureShare} data-tooltip="Secure Relay" className="w-10 h-10 glass rounded-xl flex items-center justify-center text-lg hover:bg-emerald-500/20 transition-all">📤</button>
           <button onClick={handleVerify} data-tooltip="Verify Intel" className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg transition-all ${verificationReport ? 'bg-emerald-500/20 border-emerald-500/40' : 'hover:bg-emerald-500/20'}`}>🛡️</button>
+          <button onClick={handleAnalyzeClick} data-tooltip="Deep Analysis" className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg transition-all ${analysisResult ? 'bg-purple-500/20 border-purple-500/40' : 'hover:bg-purple-500/20'}`}>🧠</button>
           <button onClick={handleGenerateVideoClick} data-tooltip="Synthesize Visuals" className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg hover:bg-accent/20 transition-all ${isVideoGenerating ? 'animate-pulse' : ''}`}>
              🎬
           </button>
@@ -287,9 +321,6 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
              <p className="text-[10px] font-mono text-accent animate-pulse uppercase tracking-widest min-h-[1.5em]">
                 {REASSURING_MESSAGES[loadingMsgIdx]}
              </p>
-             <p className="text-[8px] font-mono text-slate-500 uppercase mt-8 max-w-xs">
-                Video synthesis can take up to 2-3 minutes. Protocol requires maintaining active connection.
-             </p>
           </div>
         )}
 
@@ -299,26 +330,10 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
              <p className="text-[9px] font-mono text-slate-400 mb-6 leading-relaxed">
                 Volumetric video synthesis requires a paid GCP project API key. Select a key to proceed with the Veo protocol.
              </p>
-             <a 
-               href="https://ai.google.dev/gemini-api/docs/billing" 
-               target="_blank" 
-               className="text-[8px] font-mono text-accent hover:underline uppercase mb-8 block"
-             >
-               View Billing Documentation ↗
-             </a>
+             <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-[8px] font-mono text-accent hover:underline uppercase mb-8 block">View Billing Documentation ↗</a>
              <div className="flex flex-col w-full gap-2">
-                <button 
-                  onClick={handleSelectKey}
-                  className="w-full py-4 bg-accent text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all"
-                >
-                  Select API Key
-                </button>
-                <button 
-                  onClick={() => setShowApiKeyDialog(false)}
-                  className="w-full py-3 text-[8px] font-mono text-slate-500 uppercase hover:text-white"
-                >
-                  Cancel Protocol
-                </button>
+                <button onClick={handleSelectKey} className="w-full py-4 bg-accent text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all">Select API Key</button>
+                <button onClick={() => setShowApiKeyDialog(false)} className="w-full py-3 text-[8px] font-mono text-slate-500 uppercase hover:text-white">Cancel Protocol</button>
              </div>
           </div>
         )}
@@ -328,13 +343,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
              <h4 className="text-[10px] font-heading font-black text-white uppercase tracking-widest">Schedule Watch Alert</h4>
              <div className="grid grid-cols-2 gap-3 w-full">
                 {[5, 15, 60, 240].map(m => (
-                  <button 
-                    key={m} 
-                    onClick={() => setQuickReminder(m)}
-                    className="py-3 bg-white/5 border border-white/10 rounded-2xl text-[9px] font-mono text-slate-300 hover:bg-accent hover:text-white hover:border-accent transition-all"
-                  >
-                    IN {m >= 60 ? `${m/60}H` : `${m}M`}
-                  </button>
+                  <button key={m} onClick={() => setQuickReminder(m)} className="py-3 bg-white/5 border border-white/10 rounded-2xl text-[9px] font-mono text-slate-300 hover:bg-accent hover:text-white hover:border-accent transition-all">IN {m >= 60 ? `${m/60}H` : `${m}M`}</button>
                 ))}
              </div>
              <button onClick={() => setShowReminderPicker(false)} className="text-[8px] font-mono text-slate-500 uppercase hover:text-white pt-2">Cancel</button>
@@ -350,11 +359,6 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
              <p className="text-[8px] font-mono text-emerald-500 uppercase animate-pulse">
                 {shareProgress < 100 ? `BROADCASTING_BITSTREAM_${Math.random().toString(16).substr(2, 6).toUpperCase()}...` : 'UPLINK_STABLE_RECON_SENT'}
              </p>
-             <div className="mt-6 flex gap-1 h-3 overflow-hidden">
-                {[...Array(12)].map((_, i) => (
-                  <div key={i} className={`w-1 h-full bg-emerald-500/30 ${i*8 < shareProgress ? 'bg-emerald-500 animate-pulse' : ''}`}></div>
-                ))}
-             </div>
           </div>
         )}
       </div>
@@ -377,6 +381,28 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
         <p className={`text-[11px] font-mono text-slate-400 leading-relaxed mb-6 ${isExpanded ? '' : 'line-clamp-3'}`}>
           {news.content}
         </p>
+
+        {isAnalyzing && (
+           <div className="mb-6 p-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 flex items-center justify-center gap-3">
+              <div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+              <span className="text-[9px] font-mono text-purple-400 uppercase animate-pulse">Uplinking Semantic Logic Engine...</span>
+           </div>
+        )}
+
+        {analysisResult && !isAnalyzing && (
+          <div className="mb-6 p-6 rounded-2xl border border-purple-500/20 bg-purple-500/5 animate-in slide-in-from-top-4 relative overflow-hidden group/analysis">
+            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover/analysis:opacity-10 transition-opacity">
+               <span className="text-4xl">🧠</span>
+            </div>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[9px] font-black text-purple-500 uppercase tracking-[0.2em]">Strategic_Insight_Protocol</span>
+              <div className="flex gap-1">
+                 {[...Array(3)].map((_, i) => <div key={i} className="w-1 h-1 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: `${i*0.2}s` }}></div>)}
+              </div>
+            </div>
+            <p className="text-[10px] font-mono text-slate-300 italic leading-relaxed whitespace-pre-wrap">"{analysisResult}"</p>
+          </div>
+        )}
 
         {verificationReport && (
           <div className="mb-6 p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 animate-in slide-in-from-top-4">
@@ -404,13 +430,6 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSet
           </button>
         </div>
       </div>
-
-      {isVerifying && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50 text-center p-10">
-          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mb-6"></div>
-          <span className="text-xs font-heading font-black text-accent uppercase tracking-widest animate-pulse">Running Neural Fact-Check...</span>
-        </div>
-      )}
     </div>
   );
 };
