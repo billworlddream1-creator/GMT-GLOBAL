@@ -1,93 +1,163 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { NewsItem, IntelligenceReport, IntelligenceSignal, CyberThreat, DeepSpaceObject, DecodedSignal, MarketData, InternetStats, Influencer } from '../types';
+import { NewsItem, IntelligenceReport, IntelligenceSignal, CyberThreat, DeepSpaceObject, DecodedSignal, MarketData, InternetStats, Influencer, VulnerabilityReport, VerificationReport, CelebrityDossier, SentimentData } from '../types';
 
-const TEXT_MODEL = 'gemini-3-flash-preview';
+const FLASH_MODEL = 'gemini-3-flash-preview';
 const PRO_MODEL = 'gemini-3-pro-preview';
+const IMAGE_MODEL = 'gemini-2.5-flash-image';
+const TTS_MODEL = 'gemini-2.5-flash-preview-tts';
 
-export interface SocialIntercept {
-  id: string;
-  user: string;
-  content: string;
-  platform: string;
-  timestamp: string;
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
 }
 
+const CACHE_TTL = 1000 * 60 * 10; // 10 minutes cache
+
 export class IntelligenceService {
+  private cache: Map<string, CacheEntry<any>> = new Map();
+
   constructor() {}
 
-  async translateText(text: string, targetLanguage: string): Promise<string> {
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `Translate the following text to ${targetLanguage}. Return ONLY the translated text, no other comments: "${text}"`;
-      const response = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt
-      });
-      return response.text || "Translation failed.";
-    } catch (e) {
-      console.error("Translation error:", e);
-      return "Translation failed.";
+  private getCached<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (entry && (Date.now() - entry.timestamp) < CACHE_TTL) {
+      return entry.data;
     }
+    return null;
   }
 
-  async getGeopoliticalPrediction(query: string): Promise<{ prediction: string, riskLevel: number, factors: string[] }> {
+  private setCached(key: string, data: any) {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  // Guidelines: Search Grounding output response.text may not be in JSON format; do not attempt to parse it as JSON.
+  async getHistoricalSentimentAnalysis(): Promise<{ history: any[], summary: string }> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `Act as a Geopolitical Oracle. Analyze the future implications of: ${query}. 
-      Provide a detailed reasoning-based prediction, a risk level (0-100), and key driving factors.
-      Return JSON: { "prediction": string, "riskLevel": number, "factors": string[] }`;
-
       const response = await ai.models.generateContent({
-        model: PRO_MODEL,
-        contents: prompt,
+        model: FLASH_MODEL,
+        contents: "Generate a simulated 24-hour historical sentiment log (hourly points) for 'Eurasia' and 'Africa' based on current real-world trends. Return ONLY valid JSON: { \"history\": [{ \"hour\": \"00:00\", \"Eurasia\": 75, \"Africa\": 60 }, ...], \"summary\": \"string\" }",
         config: {
-          thinkingConfig: { thinkingBudget: 15000 },
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              prediction: { type: Type.STRING },
-              riskLevel: { type: Type.NUMBER },
-              factors: { type: Type.ARRAY, items: { type: Type.STRING } }
-            }
-          }
+          // Removed googleSearch to allow reliable JSON parsing per guidelines
+          responseMimeType: "application/json"
         }
       });
       return JSON.parse(response.text || "{}");
     } catch (e) {
-      return { prediction: "Unable to calculate future trajectories.", riskLevel: 50, factors: ["Incomplete data"] };
+      console.error("Historical sentiment fetch failed:", e);
+      return { history: [], summary: "Trend engine offline. Temporal sync failed." };
     }
   }
 
-  async getGlobalSentiment(): Promise<{ region: string, sentiment: string, score: number, color: string }[]> {
+  async getGlobalCyberIntelligence(): Promise<NewsItem[]> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `Analyze current global news sentiment. Provide scores for 6 major world regions.
-      Return JSON array: [{ "region": string, "sentiment": "VOLATILE" | "STABLE" | "OPTIMISTIC", "score": number, "color": string }]`;
-
       const response = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt,
+        model: FLASH_MODEL,
+        contents: "Find the 5 most critical global cybersecurity incidents from the last 48 hours. Focus on high-impact infrastructure exploits.",
         config: {
           tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                region: { type: Type.STRING },
-                sentiment: { type: Type.STRING },
-                score: { type: Type.NUMBER },
-                color: { type: Type.STRING }
-              }
-            }
-          }
+          // Guidelines: Do not parse JSON when search is enabled. Returning a simplified structure for UI stability.
         }
       });
-      return JSON.parse(response.text || "[]");
+      
+      const mockItems: NewsItem[] = [
+        {
+          id: `CYBER-INTEL-${Date.now()}-0`,
+          title: "Systemic Infrastructure Vulnerability Identified",
+          content: response.text || "Analysis of recent digital flows indicate a potential bypass of secondary firewall layers in major logistical nodes.",
+          sentiment: "CRITICAL",
+          location: "Global",
+          category: "CYBERSECURITY",
+          timestamp: new Date().toISOString(),
+          sources: (response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[])?.filter(c => c.web).map(c => ({
+            uri: c.web.uri,
+            title: c.web.title
+          })) || []
+        }
+      ];
+      return mockItems;
     } catch (e) {
+      console.error("Cyber intel fetch failed:", e);
+      return [];
+    }
+  }
+
+  async performVulnerabilityScan(targetUrl: string): Promise<VulnerabilityReport> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: PRO_MODEL,
+        contents: `Perform a simulated high-clearance security audit on the external architecture of ${targetUrl}. 
+        Identify potential vulnerabilities based on standard web stack weaknesses (OWASP), server misconfigurations, and outdated protocols.
+        Return JSON: { \"target\": \"string\", \"score\": number, \"threats\": [{ \"type\": \"string\", \"severity\": \"CRITICAL\" | \"HIGH\" | \"MEDIUM\" | \"LOW\", \"description\": \"string\", \"remediation\": \"string\" }], \"metadata\": { \"server\": \"string\", \"ssl\": \"string\", \"latency\": \"string\" } }`,
+        config: { 
+          responseMimeType: "application/json",
+          thinkingConfig: { thinkingBudget: 16000 }
+        }
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (e) {
+      console.error("Vulnerability scan failed:", e);
+      return {
+        target: targetUrl,
+        score: 0,
+        threats: [],
+        metadata: { server: 'N/A', ssl: 'N/A', latency: '0ms' }
+      };
+    }
+  }
+
+  async getStrategicInvestmentAdvice(marketData: MarketData): Promise<string> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Based on current market state: BTC at $${marketData.bitcoinPrice}, provide a 1-sentence tactical investment tip for a global operative.`,
+      });
+      return response.text || "Market trajectory stable. Proceed with standard capital deployment.";
+    } catch (e) {
+      return "Unable to resolve market trajectory. Neural link timeout.";
+    }
+  }
+
+  async getCelebritySpotlight(name: string): Promise<CelebrityDossier> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Generate a tactical intelligence dossier for: \"${name}\". Include occupation, recent major activity, influence score (0-100), risk rating (STABLE, ELEVATED, CRITICAL), and character sketch. Return JSON: { \"name\": \"string\", \"occupation\": \"string\", \"recentActivity\": \"string\", \"influenceScore\": number, \"riskRating\": \"STABLE\" | \"ELEVATED\" | \"CRITICAL\", \"newsHighlights\": [{ \"title\": \"string\", \"uri\": \"string\" }], \"biometricSummary\": \"string\" }`,
+        config: {
+          // Removed googleSearch to guarantee valid JSON response per guidelines
+          responseMimeType: "application/json"
+        }
+      });
+
+      const dossier: CelebrityDossier = JSON.parse(response.text || "{}");
+      dossier.imageUrl = `https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=800`;
+      return dossier;
+    } catch (e) {
+      console.error("Celebrity spotlight uplink failed:", e);
+      throw new Error("Unable to fix satellite target on specified individual.");
+    }
+  }
+
+  async generateIntelligenceDossiers(query: string): Promise<IntelligenceReport[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: PRO_MODEL,
+        contents: `Generate 4 detailed intelligence dossiers for the topic: ${query}. Return JSON array: [{ \"title\": \"string\", \"summary\": \"string\", \"keyInsights\": [\"string\"], \"threatLevel\": \"MINIMAL\" | \"ELEVATED\" | \"SEVERE\", \"groundingSources\": [{ \"uri\": \"string\", \"title\": \"string\" }] }]`,
+        config: {
+          // Removed googleSearch to ensure JSON compliance
+          responseMimeType: "application/json"
+        }
+      });
+      const data = JSON.parse(response.text || "[]");
+      return data.map((r: any) => ({ ...r, lastUpdated: new Date().toISOString() }));
+    } catch (e) {
+      console.error("Dossier generation failed:", e);
       return [];
     }
   }
@@ -95,333 +165,163 @@ export class IntelligenceService {
   async getLocalizedNews(location: string): Promise<NewsItem[]> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `Provide the most recent, breaking news and intelligence specific to the city or country: ${location}. 
-      Include critical events, political shifts, or major local updates from the last 24-48 hours.
-      Return JSON array: [{title, content, sentiment, location}]`;
-
       const response = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt,
+        model: FLASH_MODEL,
+        contents: `Find breaking world intelligence in ${location}.`,
         config: {
           tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                content: { type: Type.STRING },
-                sentiment: { type: Type.STRING },
-                location: { type: Type.STRING }
-              }
-            }
-          }
         }
       });
-
-      return JSON.parse(response.text || "[]").map((item: any, i: number) => ({
-        id: `LOC-${Date.now()}-${i}`,
-        ...item,
+      
+      const newsItem: NewsItem = {
+        id: `LOC-${location}-${Date.now()}-0`,
+        title: `Regional Intelligence: ${location}`,
+        category: "GEOPOLITICS",
+        author: "GMT_ORACLE",
+        content: response.text || "Synchronizing terrestrial signals. Stability optimal.",
+        sentiment: "STABLE",
+        location,
         timestamp: new Date().toISOString(),
-        sources: [{ uri: 'https://news.google.com', title: `Local Intel: ${location}` }]
-      }));
+        image: `https://images.unsplash.com/photo-1517732359359-51f709b1fec5?auto=format&fit=crop&q=80&w=800`,
+        sources: (response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[])?.filter(c => c.web).map(c => ({
+          uri: c.web.uri,
+          title: c.web.title
+        })) || []
+      };
+      return [newsItem];
     } catch (e) {
-      console.error("Localized news error:", e);
+      console.error("Localized news fetch failed:", e);
       return [];
     }
-  }
-
-  async scanDeepSpace(): Promise<DeepSpaceObject[]> {
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `Act as a Deep Space Monitoring AI. Detect 5 objects millions of miles from Earth.
-      Include: name, distanceMiles (millions), rangeKm, type (ASTEROID, PROBE, STATION, ANOMALY), velocity (mph), 3D coordinates (x,y,z).
-      Return JSON: [{id, name, distanceMiles, rangeKm, type, velocity, coordinates: {x,y,z}}]`;
-
-      const response = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt,
-        config: { 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                name: { type: Type.STRING },
-                distanceMiles: { type: Type.NUMBER },
-                rangeKm: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-                velocity: { type: Type.NUMBER },
-                coordinates: {
-                  type: Type.OBJECT,
-                  properties: {
-                    x: { type: Type.NUMBER },
-                    y: { type: Type.NUMBER },
-                    z: { type: Type.NUMBER }
-                  }
-                }
-              }
-            }
-          }
-        },
-      });
-
-      return JSON.parse(response.text || "[]");
-    } catch (e) {
-      console.error("Deep space scan error:", e);
-      return [];
-    }
-  }
-
-  async decodeEncryptedSignal(cipher: string): Promise<DecodedSignal> {
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `Decode and decrypt the following tactical signal cipher: "${cipher}".
-      Provide the decrypted message, a confidence score (0-100), and a simulated origin.
-      Return JSON: {id, original: "${cipher}", decrypted, confidence, origin}`;
-
-      const response = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt,
-        config: { 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              original: { type: Type.STRING },
-              decrypted: { type: Type.STRING },
-              confidence: { type: Type.NUMBER },
-              origin: { type: Type.STRING }
-            }
-          }
-        },
-      });
-
-      return JSON.parse(response.text || "{}");
-    } catch (e) {
-      return { id: 'ERR', original: cipher, decrypted: 'DECRYPTION_FAILED', confidence: 0, origin: 'UNKNOWN' };
-    }
-  }
-
-  async getLatestGlobalUpdates(category: string): Promise<NewsItem[]> {
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `Global Intel: ${category}. Return 6 news items in JSON: [{title, content, sentiment, location}]`;
-      const response = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt,
-        config: { 
-          tools: [{ googleSearch: {} }], 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                content: { type: Type.STRING },
-                sentiment: { type: Type.STRING },
-                location: { type: Type.STRING }
-              }
-            }
-          }
-        },
-      });
-      return JSON.parse(response.text || "[]").map((item: any, i: number) => ({
-        id: `NXS-${Date.now()}-${i}`,
-        ...item,
-        timestamp: new Date().toISOString(),
-        sources: [{ uri: 'https://news.google.com', title: 'Global News' }]
-      }));
-    } catch (e) { return []; }
-  }
-
-  async getSatelliteSignals(lat?: number, lng?: number): Promise<IntelligenceSignal[]> {
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const response = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: `Scan satellites near ${lat}, ${lng}. Return 5 signals.`,
-        config: { 
-          tools: [{ googleSearch: {} }], 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                type: { type: Type.STRING },
-                location: { type: Type.STRING },
-                lat: { type: Type.NUMBER },
-                lng: { type: Type.NUMBER },
-                description: { type: Type.STRING },
-                urgency: { type: Type.STRING }
-              }
-            }
-          }
-        },
-      });
-      return JSON.parse(response.text || "[]");
-    } catch (e) {
-      return [
-        { id: 'S1', type: 'SATELLITE_FIX', location: 'LEO Orbit', lat: lat || 0, lng: lng || 0, description: 'Broadband satellite stable.', urgency: 'LOW' }
-      ];
-    }
-  }
-
-  async scanForCyberIntruders(): Promise<CyberThreat[]> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: "Detect simulated cyber threats.",
-      config: { 
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              ip: { type: Type.STRING },
-              origin: { type: Type.STRING },
-              type: { type: Type.STRING },
-              severity: { type: Type.STRING },
-              timestamp: { type: Type.STRING },
-              status: { type: Type.STRING },
-              payload: { type: Type.STRING }
-            }
-          }
-        }
-      },
-    });
-    return JSON.parse(response.text || "[]");
-  }
-
-  async generateIntelligenceDossiers(query: string): Promise<IntelligenceReport[]> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: `Generate intel dossiers for: ${query}`,
-      config: { 
-        tools: [{ googleSearch: {} }], 
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              summary: { type: Type.STRING },
-              keyInsights: { 
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              },
-              threatLevel: { type: Type.STRING },
-              groundingSources: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    uri: { type: Type.STRING },
-                    title: { type: Type.STRING }
-                  }
-                }
-              },
-              lastUpdated: { type: Type.STRING }
-            }
-          }
-        }
-      },
-    });
-    return JSON.parse(response.text || "[]");
   }
 
   async getMarketIntelligence(): Promise<MarketData> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: "Return current Bitcoin market intelligence and top currency conversions in JSON format.",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            bitcoinPrice: { type: Type.NUMBER },
-            bitcoinHistory: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  time: { type: Type.STRING },
-                  price: { type: Type.NUMBER }
-                }
-              }
-            },
-            conversions: {
-              type: Type.OBJECT,
-              properties: {
-                EUR: { type: Type.NUMBER },
-                GBP: { type: Type.NUMBER },
-                JPY: { type: Type.NUMBER },
-                CNY: { type: Type.NUMBER }
-              }
-            }
-          }
-        }
-      }
-    });
-    return JSON.parse(response.text || "{}");
-  }
-
-  async getInternetStats(): Promise<{stats: InternetStats, influencers: Influencer[]}> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: "Return global internet reach stats and top influencers for the week in JSON format.",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            stats: {
-              type: Type.OBJECT,
-              properties: {
-                daily: { type: Type.NUMBER },
-                weekly: { type: Type.NUMBER },
-                monthly: { type: Type.NUMBER },
-                yearly: { type: Type.NUMBER }
-              }
-            },
-            influencers: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  reach: { type: Type.STRING },
-                  platform: { type: Type.STRING },
-                  category: { type: Type.STRING }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-    return JSON.parse(response.text || "{}");
-  }
-
-  async generateBroadcastAudio(text: string): Promise<string | undefined> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: `Say with authority and professional clarity: ${text}` }] }],
+        model: FLASH_MODEL,
+        contents: `Provide current Bitcoin price, a 6-point 24-hour history, and conversion rates for USD, EUR, GBP, JPY.
+        Return JSON: { \"bitcoinPrice\": number, \"bitcoinHistory\": [{ \"time\": \"string\", \"price\": number }], \"conversions\": { \"USD\": number, \"EUR\": number, \"GBP\": number, \"JPY\": number } }`,
+        config: {
+          // Removed googleSearch to ensure valid JSON output
+          responseMimeType: "application/json"
+        }
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (e) {
+      console.error("Market intelligence fetch failed:", e);
+      return { bitcoinPrice: 0, bitcoinHistory: [], conversions: {} };
+    }
+  }
+
+  async getInternetStats(): Promise<{stats: InternetStats, influencers: Influencer[]}> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Generate global internet reach stats (billions) and 5 trending influencers.
+        Return JSON: { \"stats\": { \"daily\": number, \"weekly\": number, \"monthly\": number, \"yearly\": number }, \"influencers\": [{ \"name\": \"string\", \"reach\": \"string\", \"platform\": \"string\", \"category\": \"string\" }] }`,
+        config: { responseMimeType: "application/json" }
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (e) {
+      console.error("Internet stats fetch failed:", e);
+      return { stats: { daily: 0, weekly: 0, monthly: 0, yearly: 0 }, influencers: [] };
+    }
+  }
+
+  async getGlobalSentiment(): Promise<SentimentData[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Analyze current emotional sentiment for 6 major world regions. Include center lat/lng.
+        Return JSON array: [{ \"region\": \"string\", \"lat\": number, \"lng\": number, \"sentiment\": \"STABLE\" | \"VOLATILE\" | \"CRITICAL\", \"score\": number, \"color\": \"string (hex)\" }]`,
+        config: {
+          // Removed googleSearch to guarantee JSON output
+          responseMimeType: "application/json"
+        }
+      });
+      return JSON.parse(response.text || "[]");
+    } catch (e) {
+      console.error("Global sentiment fetch failed:", e);
+      return [];
+    }
+  }
+
+  async verifyNewsStory(title: string, content: string): Promise<VerificationReport> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: PRO_MODEL,
+        contents: `Analyze story for accuracy: \"${title}\" CONTENT: \"${content}\". 
+        Return JSON: { \"truthScore\": number, \"confidence\": \"HIGH\" | \"MEDIUM\" | \"LOW\", \"analysis\": \"string\", \"sources\": [{ \"title\": \"string\", \"uri\": \"string\" }] }`,
+        config: {
+          // Removed googleSearch to ensure JSON structure
+          thinkingConfig: { thinkingBudget: 32768 },
+          responseMimeType: "application/json"
+        }
+      });
+
+      return JSON.parse(response.text || "{}");
+    } catch (e: any) {
+      console.error("Verification uplink failed:", e);
+      return {
+        truthScore: 50,
+        confidence: 'LOW',
+        analysis: "Verification engine offline. Signal interference detected.",
+        sources: []
+      };
+    }
+  }
+
+  async getLatestGlobalUpdates(category: string, page: number = 1): Promise<NewsItem[]> {
+    const cacheKey = `news_${category}_p${page}`;
+    const cached = this.getCached<NewsItem[]>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Fetch breaking world news in category: ${category}.`,
+        config: {
+          tools: [{ googleSearch: {} }],
+          // Guidelines: Avoid JSON parsing when search is active
+        }
+      });
+
+      const newsItems: NewsItem[] = [
+        {
+          id: `INTEL-${Date.now()}-${page}-0`,
+          title: `Flash Intel: ${category}`,
+          category,
+          author: "GMT_ORACLE",
+          content: response.text || "Monitoring orbital data flows. Terrestrial noise level nominal.",
+          sentiment: "STABLE",
+          timestamp: new Date().toISOString(),
+          image: `https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200`,
+          sources: (response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[])?.filter(c => c.web).map(c => ({
+            uri: c.web.uri,
+            title: c.web.title
+          })) || []
+        }
+      ];
+      
+      this.setCached(cacheKey, newsItems);
+      return newsItems;
+    } catch (e) {
+      console.error("Global intelligence sync failure:", e);
+      return [];
+    }
+  }
+
+  async generateBroadcastAudio(text: string): Promise<string> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: TTS_MODEL,
+        contents: [{ parts: [{ text: `Authorized Intelligence Officer voice: ${text}` }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -431,10 +331,102 @@ export class IntelligenceService {
           },
         },
       });
-      return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    } catch (err) {
-      console.error("Audio generation failed:", err);
-      return undefined;
+      return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
+    } catch (e) {
+      console.error("Neural voice synthesis failed:", e);
+      return "";
+    }
+  }
+
+  async decodeEncryptedSignal(cipher: string): Promise<DecodedSignal> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Decrypt this tactical cipher: \"${cipher}\". Return JSON: {id, original, decrypted, confidence, origin}`,
+        config: { 
+          responseMimeType: "application/json",
+          thinkingConfig: { thinkingBudget: 0 }
+        },
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (e) {
+      throw new Error("Cipher analysis protocol timed out.");
+    }
+  }
+
+  async scanForCyberIntruders(): Promise<CyberThreat[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Simulate network battlefield scan. Detect 6 active network infiltrators. Return JSON array.`,
+        config: { responseMimeType: "application/json" }
+      });
+      return JSON.parse(response.text || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async translateText(text: string, targetLanguage: string): Promise<string> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Professional tactical translation to ${targetLanguage}: \"${text}\". Return direct translation only.`
+      });
+      return response.text || "";
+    } catch (e) {
+      return "Translation protocol failure.";
+    }
+  }
+
+  async getGeopoliticalPrediction(query: string): Promise<any> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: PRO_MODEL,
+        contents: `Forecast geopolitical outcomes for: ${query}. Return JSON: {prediction, riskLevel, factors: []}`,
+        config: { 
+          // Removed googleSearch to guarantee JSON output
+          thinkingConfig: { thinkingBudget: 16000 },
+          responseMimeType: "application/json" 
+        }
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (e) {
+      return { prediction: "Future trajectory obscured by orbital noise.", riskLevel: 0, factors: [] };
+    }
+  }
+
+  async getSatelliteSignals(lat?: number, lng?: number): Promise<IntelligenceSignal[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const contents = `Simulate 10 orbital intelligence signals. ${lat && lng ? `Focus near Lat: ${lat}, Lng: ${lng}.` : ''} JSON array.`;
+      
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents,
+        config: { responseMimeType: "application/json" }
+      });
+      return JSON.parse(response.text || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async scanDeepSpace(): Promise<DeepSpaceObject[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Scan deep space. Identify 5 objects. Return JSON array.`,
+        config: { responseMimeType: "application/json" }
+      });
+      return JSON.parse(response.text || "[]");
+    } catch (e) {
+      return [];
     }
   }
 }

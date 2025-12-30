@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { IntelligenceService } from '../services/geminiService';
 import { DeepSpaceObject } from '../types';
@@ -7,6 +6,20 @@ import { playUISound } from '../utils/audioUtils';
 interface DeepSpaceScannerProps {
   intelService: IntelligenceService;
 }
+
+const ObjectSkeleton = () => (
+  <div className="grid grid-cols-2 gap-6">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="p-6 rounded-3xl border border-white/10 bg-white/5 space-y-4 animate-pulse">
+        <div className="flex justify-between items-start">
+          <div className="w-1/2 h-2 bg-white/10 rounded-full shimmer"></div>
+          <div className="w-12 h-3 bg-white/10 rounded shimmer"></div>
+        </div>
+        <div className="w-3/4 h-6 bg-white/10 rounded-xl shimmer"></div>
+      </div>
+    ))}
+  </div>
+);
 
 const DeepSpaceScanner: React.FC<DeepSpaceScannerProps> = ({ intelService }) => {
   const [objects, setObjects] = useState<DeepSpaceObject[]>([]);
@@ -47,22 +60,28 @@ const DeepSpaceScanner: React.FC<DeepSpaceScannerProps> = ({ intelService }) => 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1">
         <div className="lg:col-span-2 glass rounded-[3rem] p-10 relative overflow-hidden bg-black/40 border border-white/5">
-          <div className="relative z-10 grid grid-cols-2 gap-6">
-            {objects.map(obj => (
-              <div 
-                key={obj.id} 
-                onClick={() => { setSelected(obj); playUISound('click'); }}
-                className={`p-6 rounded-3xl border transition-all cursor-pointer ${
-                  selected?.id === obj.id ? 'bg-accent/20 border-accent' : 'bg-white/5 border-white/10 hover:border-accent/30'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[8px] font-mono text-slate-500 uppercase">Distance: {obj.distanceMiles}M MILES</span>
-                  <span className="px-2 py-0.5 bg-accent/20 rounded text-[7px] text-accent font-black uppercase">{obj.type}</span>
-                </div>
-                <h4 className="text-lg font-heading font-black text-white uppercase tracking-tighter">{obj.name}</h4>
+          <div className="relative z-10">
+            {scanning ? (
+              <ObjectSkeleton />
+            ) : (
+              <div className="grid grid-cols-2 gap-6">
+                {objects.map(obj => (
+                  <div 
+                    key={obj.id} 
+                    onClick={() => { setSelected(obj); playUISound('click'); }}
+                    className={`p-6 rounded-3xl border transition-all cursor-pointer ${
+                      selected?.id === obj.id ? 'bg-accent/20 border-accent' : 'bg-white/5 border-white/10 hover:border-accent/30'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <span className="text-[8px] font-mono text-slate-500 uppercase">Distance: {obj.distanceMiles}M MILES</span>
+                      <span className="px-2 py-0.5 bg-accent/20 rounded text-[7px] text-accent font-black uppercase">{obj.type}</span>
+                    </div>
+                    <h4 className="text-lg font-heading font-black text-white uppercase tracking-tighter">{obj.name}</h4>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -81,7 +100,7 @@ const DeepSpaceScanner: React.FC<DeepSpaceScannerProps> = ({ intelService }) => 
               </p>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center opacity-20 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 opacity-20">
               <p className="text-[10px] font-mono uppercase tracking-widest">Select an object</p>
             </div>
           )}

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,23 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <script>
-        // Dynamic Neural Theme Engine
         const THEMES = [
-            { name: 'NEURAL_BLUE', primary: '#3b82f6', glow: 'rgba(59, 130, 246, 0.3)', bgSecondary: 'rgba(30, 58, 138, 0.2)' },
-            { name: 'VOID_PURPLE', primary: '#a855f7', glow: 'rgba(168, 85, 247, 0.3)', bgSecondary: 'rgba(88, 28, 135, 0.2)' },
-            { name: 'BIO_EMERALD', primary: '#10b981', glow: 'rgba(16, 185, 129, 0.3)', bgSecondary: 'rgba(6, 78, 59, 0.2)' },
-            { name: 'SOLAR_AMBER', primary: '#f59e0b', glow: 'rgba(245, 158, 11, 0.3)', bgSecondary: 'rgba(120, 53, 15, 0.2)' },
-            { name: 'CRIMSON_RECON', primary: '#ef4444', glow: 'rgba(239, 68, 68, 0.3)', bgSecondary: 'rgba(127, 29, 29, 0.2)' }
+            { name: 'NEURAL_BLUE', primary: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)', bgSecondary: 'rgba(30, 58, 138, 0.2)' },
+            { name: 'VOID_PURPLE', primary: '#a855f7', glow: 'rgba(168, 85, 247, 0.4)', bgSecondary: 'rgba(88, 28, 135, 0.2)' },
+            { name: 'BIO_EMERALD', primary: '#10b981', glow: 'rgba(16, 185, 129, 0.4)', bgSecondary: 'rgba(6, 78, 59, 0.2)' },
+            { name: 'CRIMSON_RECON', primary: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)', bgSecondary: 'rgba(127, 29, 29, 0.2)' }
         ];
 
-        // Pick a random theme or restore from session
         const selectedTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
         
         document.documentElement.style.setProperty('--accent-primary', selectedTheme.primary);
         document.documentElement.style.setProperty('--accent-glow', selectedTheme.glow);
         document.documentElement.style.setProperty('--bg-secondary-glow', selectedTheme.bgSecondary);
 
-        // Configure Tailwind to use the CSS variable
         tailwind.config = {
           theme: {
             extend: {
@@ -44,20 +39,17 @@
     <style>
         :root {
             --bg-dark: #020617;
-            --glass-bg: rgba(15, 23, 42, 0.3); 
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(15, 23, 42, 0.4); 
+            --glass-border: rgba(255, 255, 255, 0.1);
             --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            /* Variables injected by script: --accent-primary, --accent-glow, --bg-secondary-glow */
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
             background-image: 
-                radial-gradient(circle at 50% 50%, var(--bg-secondary-glow) 0%, transparent 70%),
-                radial-gradient(circle at 20% 30%, var(--accent-glow) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, var(--bg-secondary-glow) 0%, transparent 80%),
+                radial-gradient(circle at 20% 30%, var(--accent-glow) 0%, transparent 60%),
                 url('https://www.transparenttextures.com/patterns/stardust.png');
             background-attachment: fixed;
             color: var(--text-main);
@@ -67,23 +59,50 @@
 
         .glass {
             background: var(--glass-bg);
-            backdrop-filter: blur(16px) saturate(180%);
+            backdrop-filter: blur(20px) saturate(160%);
             border: 1px solid var(--glass-border);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .glass:hover {
-            background: rgba(15, 23, 42, 0.4);
             border-color: var(--accent-primary);
+            box-shadow: 0 0 20px var(--accent-glow);
         }
 
-        .window-entry {
-            animation: window-fade-in 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite linear;
         }
 
-        @keyframes window-fade-in {
-            from { opacity: 0; transform: translateY(30px) scale(0.96); filter: blur(15px); }
-            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 9999;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/asfalt-dark.png');
+            opacity: 0.05;
+            z-index: 9998;
+            pointer-events: none;
         }
 
         .galaxy-nav-bg {
@@ -94,7 +113,6 @@
             height: 100%;
             pointer-events: none;
             z-index: -1;
-            overflow: hidden;
         }
 
         .star {
@@ -106,27 +124,38 @@
         }
 
         @keyframes twinkle {
-            0%, 100% { opacity: 0.2; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.3); }
-        }
-
-        .scanline {
-            width: 100%;
-            height: 100%;
-            z-index: 100;
-            background: linear-gradient(to bottom, transparent 50%, rgba(255, 255, 255, 0.01) 51%);
-            background-size: 100% 4px;
-            position: fixed;
-            pointer-events: none;
-        }
-
-        @keyframes ticker {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); }
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.4); }
         }
 
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 10px;
+            background: rgba(2, 6, 23, 0.9);
+            color: var(--accent-primary);
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            border: 1px solid var(--accent-glow);
+            z-index: 1000;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        [data-tooltip]:hover:before {
+            opacity: 1;
+            bottom: 110%;
+        }
     </style>
 <script type="importmap">
 {
@@ -136,26 +165,32 @@
     "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
     "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
     "@google/genai": "https://esm.sh/@google/genai@1.34.0",
-    "recharts": "https://esm.sh/recharts@2.15.0?deps=react@19.0.0,react-dom@19.0.0"
+    "recharts": "https://esm.sh/recharts@2.15.0?deps=react@19.0.0,react-dom@19.0.0",
+    "three": "https://esm.sh/three@0.170.0",
+    "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.0.0-rc.0?deps=react@19.0.0,react-dom@19.0.0,three@0.170.0",
+    "@react-three/drei": "https://esm.sh/@react-three/drei@9.115.0?deps=react@19.0.0,react-dom@19.0.0,three@0.170.0,@react-three/fiber@9.0.0-rc.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
 </head>
 <body>
     <div class="galaxy-nav-bg" id="stars"></div>
-    <div class="scanline"></div>
+    <div class="crt-overlay"></div>
+    <div class="noise"></div>
     <div id="root"></div>
     <script>
         const starsContainer = document.getElementById('stars');
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 300; i++) {
             const star = document.createElement('div');
             star.className = 'star';
-            const size = Math.random() * 2.5;
+            const size = Math.random() * 2 + 0.5;
             star.style.width = size + 'px';
             star.style.height = size + 'px';
             star.style.top = Math.random() * 100 + '%';
             star.style.left = Math.random() * 100 + '%';
-            star.style.setProperty('--duration', (Math.random() * 4 + 2) + 's');
+            star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
             starsContainer.appendChild(star);
         }
     </script>

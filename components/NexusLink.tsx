@@ -42,14 +42,14 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
       if (newlyEligible) {
         playUISound('share');
         const tier = nextMonthlyCount / 100;
-        alert(`CRITICAL MILESTONE: Tier ${tier} reached. Additional $10.00 capital allocated to your terminal.`);
+        alert(`CRITICAL MILESTONE: Tier ${tier} established. Your monthly stipend has been increased by $10.00. Total recurring yield: $${tier * 10}.00/mo.`);
       }
     }, 800);
   };
 
   const currentTier = useMemo(() => Math.floor(user.connections.monthlyConnections / 100), [user.connections.monthlyConnections]);
   const progressInCurrentTier = useMemo(() => user.connections.monthlyConnections % 100, [user.connections.monthlyConnections]);
-  const totalPayout = useMemo(() => currentTier * 10, [currentTier]);
+  const monthlyStipend = useMemo(() => currentTier * 10, [currentTier]);
   const nextMilestone = useMemo(() => (currentTier + 1) * 100, [currentTier]);
 
   return (
@@ -61,20 +61,21 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
         
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start gap-10">
           <div className="flex-1 space-y-6">
-            <h3 className="text-4xl font-heading font-black text-white tracking-tighter uppercase leading-none">Neural_Bridge_Matrix</h3>
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em] leading-relaxed max-w-md">
-              Expand the GMT network. For every 100 unique neural handshakes established, receive a $10.00 strategic stipend. No limit on expansion.
+            <h3 className="text-4xl font-heading font-black text-white tracking-tighter uppercase leading-none">Nexus_Expansion_Protocol</h3>
+            <p className="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] leading-relaxed max-w-lg">
+              Earn <span className="text-accent font-black">$10.00 USD per month</span> for every 100 active neural connections established. 
+              Each additional block of 100 users compounds your monthly stipend indefinitely.
             </p>
 
             <div className="pt-6 space-y-6">
                <div className="space-y-3">
-                  <label className="text-[9px] font-black text-accent uppercase tracking-widest ml-1">Target Identity Hash</label>
+                  <label className="text-[9px] font-black text-accent uppercase tracking-widest ml-1">Establish New Connection</label>
                   <div className="flex gap-4">
                     <input 
                       value={socialTarget}
                       onChange={(e) => setSocialTarget(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-                      placeholder="Enter Social ID (e.g. @agent_smith)..."
+                      placeholder="Enter Target ID (e.g. @node_77)..."
                       className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-accent outline-none transition-all"
                     />
                     <button 
@@ -90,16 +91,16 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
           </div>
 
           <div className="w-full md:w-80 space-y-6">
-             <div className="glass p-8 rounded-[2.5rem] border border-accent/20 bg-accent/5 shadow-inner">
+             <div className="glass p-8 rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/5 shadow-inner">
                 <div className="flex justify-between items-center mb-6">
-                   <span className="text-[9px] font-black text-white uppercase tracking-widest">Active Tier</span>
-                   <span className="text-xl font-heading font-black text-accent">LEVEL_{currentTier + 1}</span>
+                   <span className="text-[9px] font-black text-white uppercase tracking-widest">Active Stipend</span>
+                   <span className="text-2xl font-heading font-black text-emerald-400">${monthlyStipend.toFixed(2)}<span className="text-[10px] ml-1 opacity-60">/MO</span></span>
                 </div>
                 
                 <div className="space-y-3">
                    <div className="flex justify-between text-[9px] font-mono text-slate-500 uppercase">
-                      <span>Milestone Progress</span>
-                      <span className="text-white">{progressInCurrentTier}%</span>
+                      <span>Tier_{currentTier + 1}_Progress</span>
+                      <span className="text-white">{progressInCurrentTier}/100</span>
                    </div>
                    <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
                       <div 
@@ -108,7 +109,7 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
                       ></div>
                    </div>
                    <p className="text-[8px] font-mono text-slate-600 text-center uppercase tracking-widest">
-                     {100 - progressInCurrentTier} more to unlock next $10 reward
+                     Target 100 connections to increase stipend by +$10.00/mo
                    </p>
                 </div>
              </div>
@@ -117,25 +118,25 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 pt-12 border-t border-white/5 relative z-10">
            <div className="glass p-6 rounded-3xl border border-white/10 bg-white/5">
-              <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Total_Network_Size</span>
+              <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Total_Established_Nodes</span>
               <div className="text-2xl font-heading font-black text-white">{user.connections.totalConnections.toLocaleString()}</div>
-              <div className="text-[8px] font-mono text-emerald-500 mt-2">▲ GLOBAL_REACH_UP</div>
+              <div className="text-[8px] font-mono text-emerald-500 mt-2">▲ NETWORK_INTEGRITY_STABLE</div>
            </div>
            
            <div className="glass p-6 rounded-3xl border border-white/10 bg-white/5">
-              <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Current_Month_Volume</span>
+              <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Monthly_Active_Handshakes</span>
               <div className="text-2xl font-heading font-black text-blue-400">{user.connections.monthlyConnections}</div>
-              <div className="text-[8px] font-mono text-slate-600 mt-2">NEXT_RESET: 18_DAYS</div>
+              <div className="text-[8px] font-mono text-slate-600 mt-2">STIPEND_CYCLE: RECURRING</div>
            </div>
 
            <div className="glass p-6 rounded-3xl border border-accent/20 bg-accent/5 group hover:bg-accent/10 transition-all">
-              <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Total_Milestone_Yield</span>
-              <div className="text-2xl font-heading font-black text-emerald-400">${totalPayout.toFixed(2)}</div>
+              <span className="text-[8px] font-mono text-slate-500 uppercase block mb-1">Total_Yield_Locked</span>
+              <div className="text-2xl font-heading font-black text-emerald-400">${monthlyStipend.toFixed(2)}</div>
               <button 
-                disabled={totalPayout === 0}
+                disabled={monthlyStipend === 0}
                 className="mt-4 w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-20 text-white rounded-xl text-[8px] font-black uppercase tracking-[0.2em] transition-all"
               >
-                Claim_Funds
+                Claim_Monthly_Payout
               </button>
            </div>
         </div>
@@ -143,17 +144,17 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
          <div className="glass p-8 rounded-[2.5rem] border border-white/5 flex items-start gap-6 bg-white/5">
-            <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-xl text-blue-400 border border-blue-500/20">∞</div>
+            <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-xl text-blue-400 border border-blue-500/20">📈</div>
             <div>
-               <h4 className="text-[10px] font-black text-white uppercase mb-2 tracking-widest">Infinite Expansion</h4>
-               <p className="text-[9px] font-mono text-slate-500 leading-relaxed uppercase tracking-wider">There is no ceiling to your earnings. Every batch of 100 verified users triggers an automatic capital injection into your neural wallet.</p>
+               <h4 className="text-[10px] font-black text-white uppercase mb-2 tracking-widest">Compounding Rewards</h4>
+               <p className="text-[9px] font-mono text-slate-500 leading-relaxed uppercase tracking-wider">Your monthly income scales linearly with your network size. Every 100 verified users is a permanent $10.00/month addition to your tactical funding.</p>
             </div>
          </div>
          <div className="glass p-8 rounded-[2.5rem] border border-white/5 flex items-start gap-6 bg-white/5">
-            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-xl text-emerald-400 border border-emerald-500/20">⚡</div>
+            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-xl text-emerald-400 border border-emerald-500/20">🗓️</div>
             <div>
-               <h4 className="text-[10px] font-black text-white uppercase mb-2 tracking-widest">Instant Verification</h4>
-               <p className="text-[9px] font-mono text-slate-500 leading-relaxed uppercase tracking-wider">GMT satellites verify neural hashes in real-time. Once the 100th connection is confirmed, your status is updated across the global ledger instantly.</p>
+               <h4 className="text-[10px] font-black text-white uppercase mb-2 tracking-widest">Monthly Settlement</h4>
+               <p className="text-[9px] font-mono text-slate-500 leading-relaxed uppercase tracking-wider">Payments are processed every 30 days based on your active connection tier. Ensure nodes remain active to maintain your stipend status.</p>
             </div>
          </div>
       </div>

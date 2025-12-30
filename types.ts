@@ -13,13 +13,35 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  bio?: string;
   rankXp: number;
+  photoUrl?: string;
   completedBounties: string[];
+  notificationSettings: {
+    enabled: boolean;
+    categories: string[];
+  };
   connections: {
     totalConnections: number;
     monthlyConnections: number;
     referralRewardEligible: boolean;
     tier2Eligible?: boolean;
+  };
+}
+
+export interface VulnerabilityReport {
+  target: string;
+  score: number;
+  threats: {
+    type: string;
+    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+    description: string;
+    remediation: string;
+  }[];
+  metadata: {
+    server: string;
+    ssl: string;
+    latency: string;
   };
 }
 
@@ -41,14 +63,47 @@ export interface DecodedSignal {
   origin: string;
 }
 
+export interface VerificationReport {
+  truthScore: number;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  analysis: string;
+  sources: { title: string; uri: string }[];
+}
+
+export interface CelebrityDossier {
+  name: string;
+  occupation: string;
+  recentActivity: string;
+  influenceScore: number;
+  riskRating: 'STABLE' | 'ELEVATED' | 'CRITICAL';
+  newsHighlights: { title: string; uri: string }[];
+  biometricSummary: string;
+  imageUrl?: string;
+}
+
+export interface SentimentData {
+  region: string;
+  lat: number;
+  lng: number;
+  sentiment: 'STABLE' | 'VOLATILE' | 'CRITICAL';
+  score: number;
+  color: string;
+}
+
+export interface IntelligenceReminder {
+  id: string;
+  intelTitle: string;
+  triggerTimestamp: number;
+  severity: 'CRITICAL' | 'ELEVATED' | 'STABLE';
+  status: 'PENDING' | 'TRIGGERED' | 'DISMISSED';
+  category: string;
+}
+
 export type ViewType = 
   | 'feed' 
+  | 'saved-intel'
   | 'intelligence' 
-  | 'saved' 
   | 'deep-space' 
-  | 'galaxy-nav' 
-  | 'tech-power' 
-  | 'space-sat' 
   | 'world-live' 
   | 'admin' 
   | 'subscription' 
@@ -56,20 +111,29 @@ export type ViewType =
   | 'investment' 
   | 'partnership' 
   | 'market' 
-  | 'snicking' 
+  | 'internet-stats'
   | 'security' 
+  | 'vulnerability-scanner'
   | 'translator' 
   | 'chat' 
   | 'games'
   | 'briefing'
   | 'oracle'
   | 'sentiments'
-  | 'blackbox';
+  | 'spatial-lab'
+  | 'blackbox'
+  | 'camera-recon'
+  | 'celebrity-spotlight'
+  | 'satellite-uplink'
+  | 'reminders'
+  | 'profile'
+  | 'live-pulse';
 
 export interface NewsItem {
   id: string;
   title: string;
   category: string;
+  author?: string;
   timestamp: string;
   content: string;
   image?: string;
@@ -110,8 +174,6 @@ export interface IntelligenceReport {
   lastUpdated: string;
 }
 
-export type NewsCategory = 'BREAKING' | 'POLITICS' | 'TECH' | 'ECONOMY' | 'SECURITY' | 'SCIENCE';
-
 export type InvestmentSector = 'CYBER_DEFENSE' | 'ORBITAL_TECH' | 'DEEP_SPACE' | 'NEURAL_RESEARCH' | 'GLOBAL_LOGISTICS';
 
 export interface Investment {
@@ -124,6 +186,7 @@ export interface Investment {
   riskLevel: 'LOW' | 'MODERATE' | 'SPECULATIVE';
   status: 'ACTIVE' | 'PAID' | 'REFUNDED';
   timestamp: string;
+  volatilityIndex?: number;
 }
 
 export interface PaymentSettings {
@@ -144,6 +207,7 @@ export interface Partnership {
   startDate: string;
   expiryDate: string;
   status: 'ACTIVE' | 'PAID' | 'REFUNDED';
+  trustScore: number;
 }
 
 export interface MarketData {
@@ -168,28 +232,33 @@ export interface Influencer {
 
 export const LEVEL_REQUIREMENTS: Record<ViewType, AccessLevel> = {
   'feed': 'FREE',
+  'saved-intel': 'FREE',
+  'profile': 'FREE',
+  'live-pulse': 'FREE',
+  'celebrity-spotlight': 'FREE',
   'briefing': 'FREE',
   'sentiments': 'FREE',
-  'saved': 'FREE',
   'subscription': 'FREE',
   'investment': 'FREE',
   'nexus-link': 'FREE',
   'world-live': 'FREE',
   'market': 'FREE',
+  'internet-stats': 'FREE',
   'partnership': 'FREE',
   'translator': 'FREE',
   'chat': 'FREE',
   'games': 'FREE',
-  'snicking': 'FIELD_AGENT',
+  'camera-recon': 'FREE',
+  'reminders': 'FREE',
   'intelligence': 'FIELD_AGENT',
-  'tech-power': 'FIELD_AGENT',
   'oracle': 'FIELD_AGENT',
+  'spatial-lab': 'FIELD_AGENT',
   'security': 'INTEL_DIRECTOR',
   'admin': 'INTEL_DIRECTOR',
-  'space-sat': 'INTEL_DIRECTOR',
+  'satellite-uplink': 'INTEL_DIRECTOR',
   'blackbox': 'INTEL_DIRECTOR',
-  'deep-space': 'NEXUS_ARCHITECT',
-  'galaxy-nav': 'NEXUS_ARCHITECT'
+  'vulnerability-scanner': 'INTEL_DIRECTOR',
+  'deep-space': 'NEXUS_ARCHITECT'
 };
 
 export const LEVEL_WEIGHT: Record<AccessLevel, number> = {

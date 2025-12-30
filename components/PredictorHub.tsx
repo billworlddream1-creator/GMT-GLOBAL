@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { IntelligenceService } from '../services/geminiService';
 import { playUISound } from '../utils/audioUtils';
@@ -6,6 +5,30 @@ import { playUISound } from '../utils/audioUtils';
 interface PredictorHubProps {
   intelService: IntelligenceService;
 }
+
+const PredictionSkeleton = () => (
+  <div className="relative z-10 pt-10 border-t border-white/10 grid grid-cols-1 lg:grid-cols-3 gap-10 animate-pulse">
+    <div className="lg:col-span-2 space-y-6">
+      <div className="w-1/4 h-3 bg-white/10 rounded-full shimmer"></div>
+      <div className="glass p-8 rounded-[2.5rem] border border-white/10 bg-white/5 h-48 shimmer"></div>
+    </div>
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <div className="flex justify-between">
+          <div className="w-1/3 h-2 bg-white/10 rounded-full shimmer"></div>
+          <div className="w-1/4 h-8 bg-white/10 rounded-xl shimmer"></div>
+        </div>
+        <div className="h-2 w-full bg-white/5 rounded-full shimmer"></div>
+      </div>
+      <div className="space-y-4">
+        <div className="w-1/2 h-2 bg-white/10 rounded-full shimmer"></div>
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-10 bg-white/5 rounded-xl border border-white/5 shimmer"></div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const PredictorHub: React.FC<PredictorHubProps> = ({ intelService }) => {
   const [query, setQuery] = useState('');
@@ -57,7 +80,9 @@ const PredictorHub: React.FC<PredictorHubProps> = ({ intelService }) => {
           </button>
         </div>
 
-        {prediction && (
+        {isLoading ? (
+          <PredictionSkeleton />
+        ) : prediction && (
           <div className="relative z-10 pt-10 border-t border-white/10 grid grid-cols-1 lg:grid-cols-3 gap-10 animate-in slide-in-from-bottom-6 duration-500">
              <div className="lg:col-span-2 space-y-6">
                 <h3 className="text-[10px] font-black text-accent uppercase tracking-widest">Neural Forecast</h3>

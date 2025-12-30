@@ -1,110 +1,124 @@
 
-import React, { useState, useRef, useMemo, memo } from 'react';
-import { NewsItem } from '../types';
+import React, { useState, useRef, useMemo, memo, useEffect } from 'react';
+import { NewsItem, VerificationReport, IntelligenceReminder } from '../types';
 import { IntelligenceService } from '../services/geminiService';
 import { playUISound, decode, decodeAudioData } from '../utils/audioUtils';
+import { generateGoogleCalendarUrl } from '../utils/calendarUtils';
 import { GoogleGenAI } from "@google/genai";
 
 interface NewsCardProps {
   news: NewsItem;
   intelService: IntelligenceService;
-  isSaved?: boolean;
-  onToggleSave?: (id: string) => void;
-  onLocationClick?: (location: string) => void;
+  onVRView?: (url: string, title: string) => void;
+  onSetReminder?: (reminder: IntelligenceReminder) => void;
 }
 
-const FUTURISTIC_PLACEHOLDER = `data:image/svg+xml;base64,${btoa(`
-<svg width="400" height="225" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="225" fill="#020617"/>
-  <circle cx="200" cy="112" r="40" stroke="#0ea5e922" stroke-width="1" fill="none"/>
-</svg>
-`)}`;
+const REASSURING_MESSAGES = [
+  "Synchronizing orbital buffers...",
+  "Synthesizing volumetric frames...",
+  "Uplinking temporal data to Veo...",
+  "Analyzing report semantics...",
+  "Generating cinematic keyframes...",
+  "Rendering high-fidelity visuals...",
+  "Finalizing neural stream..."
+];
 
-const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, isSaved, onToggleSave }) => {
-  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, onVRView, onSetReminder }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationReport, setVerificationReport] = useState<VerificationReport | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
+  const [showReminderPicker, setShowReminderPicker] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareProgress, setShareProgress] = useState(0);
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  const readingTime = useMemo(() => {
-    const content = news.content || "";
-    return Math.ceil(content.split(/\s+/).filter(Boolean).length / 200) || 1;
-  }, [news.content]);
+  useEffect(() => {
+    const savedItems = JSON.parse(localStorage.getItem('gmt_saved_intel') || '[]');
+    setIsSaved(savedItems.some((item: any) => item.id === news.id));
+  }, [news.id]);
 
-  const handleWatchVideo = async (e: React.MouseEvent) => {
+  useEffect(() => {
+    let interval: number;
+    if (isVideoGenerating) {
+      interval = window.setInterval(() => {
+        setLoadingMsgIdx(prev => (prev + 1) % REASSURING_MESSAGES.length);
+      }, 4000);
+    }
+    return () => clearInterval(interval);
+  }, [isVideoGenerating]);
+
+  const formattedDate = useMemo(() => {
+    return new Date(news.timestamp).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }, [news.timestamp]);
+
+  const toggleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isVideoGenerating) return;
-
-    setErrorMsg(null);
-    if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
-      await window.aistudio.openSelectKey();
+    const savedItems = JSON.parse(localStorage.getItem('gmt_saved_intel') || '[]');
+    let updated;
+    if (isSaved) {
+      updated = savedItems.filter((item: any) => item.id !== news.id);
+      playUISound('alert');
+    } else {
+      updated = [...savedItems, news];
+      playUISound('success');
     }
-    
-    playUISound('startup');
-    setIsVideoGenerating(true);
-    setIsExpanded(true);
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const prompt = `News: ${news.title}. Cinematic view.`;
-      
-      let operation = await ai.models.generateVideos({
-        model: 'veo-3.1-fast-generate-preview',
-        prompt: prompt,
-        config: { numberOfVideos: 1, resolution: '720p', aspectRatio: '16:9' }
-      });
-
-      while (!operation.done) {
-        await new Promise(resolve => setTimeout(resolve, 10000));
-        operation = await ai.operations.getVideosOperation({ operation: operation });
-      }
-
-      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      if (downloadLink) {
-        const videoResponse = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-        const blob = await videoResponse.blob();
-        setVideoUrl(URL.createObjectURL(blob));
-        playUISound('success');
-      }
-    } catch (err: any) {
-      setErrorMsg('Video failed.');
-    } finally {
-      setIsVideoGenerating(false);
-    }
+    localStorage.setItem('gmt_saved_intel', JSON.stringify(updated));
+    setIsSaved(!isSaved);
+    window.dispatchEvent(new CustomEvent('saved_intel_updated'));
   };
 
-  const stopAudio = () => {
-    if (sourceRef.current) {
-      try { sourceRef.current.stop(); } catch(e) {}
-      sourceRef.current = null;
-    }
-    setIsAudioPlaying(false);
+  const startSecureShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSharing(true);
+    setShareProgress(0);
+    playUISound('startup');
+
+    const interval = setInterval(() => {
+      setShareProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setIsSharing(false);
+            playUISound('share');
+          }, 1000);
+          return 100;
+        }
+        return prev + 5;
+      });
+    }, 100);
   };
 
   const toggleAudio = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isAudioPlaying) {
-      stopAudio();
+      sourceRef.current?.stop();
+      setIsAudioPlaying(false);
       return;
     }
 
     setIsAudioLoading(true);
     playUISound('startup');
     try {
-      const content = news.content || "No content.";
-      const audioData = await intelService.generateBroadcastAudio(content);
+      const audioData = await intelService.generateBroadcastAudio(news.content);
       if (audioData) {
         const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (!audioContextRef.current) audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
-        const ctx = audioContextRef.current!;
+        const ctx = new AudioContextClass({ sampleRate: 24000 });
         const decodedBuffer = await decodeAudioData(decode(audioData), ctx, 24000, 1);
-        
         const source = ctx.createBufferSource();
         source.buffer = decodedBuffer;
         source.connect(ctx.destination);
@@ -114,133 +128,289 @@ const NewsCard: React.FC<NewsCardProps> = ({ news, intelService, isSaved, onTogg
         setIsAudioPlaying(true);
       }
     } catch (err) {
-      setErrorMsg('Audio failed.');
+      console.error('Audio synth error:', err);
     } finally {
       setIsAudioLoading(false);
     }
   };
 
-  const toggleExpand = (e: React.MouseEvent) => {
+  const handleVerify = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsExpanded(!isExpanded);
-    playUISound('click');
+    setIsVerifying(true);
+    setIsExpanded(true);
+    playUISound('startup');
+    try {
+      const report = await intelService.verifyNewsStory(news.title, news.content);
+      setVerificationReport(report);
+      playUISound('success');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
+  const executeVideoGeneration = async () => {
+    if (isVideoGenerating) return;
+    setIsVideoGenerating(true);
+    playUISound('startup');
+    try {
+      const ai = new GoogleGenAI({ apiKey: (process.env as any).API_KEY });
+      let operation = await ai.models.generateVideos({
+        model: 'veo-3.1-fast-generate-preview',
+        prompt: `A cinematic news coverage sequence for: "${news.title}". The visuals should show: ${news.content.substring(0, 200)}. Tactical intelligence agency aesthetic, high quality 4k digital feel.`,
+        config: { resolution: '720p', aspectRatio: '16:9', numberOfVideos: 1 }
+      });
+
+      while (!operation.done) {
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        operation = await ai.operations.getVideosOperation({operation: operation});
+      }
+
+      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+      const response = await fetch(`${downloadLink}&key=${(process.env as any).API_KEY}`);
+      const blob = await response.blob();
+      setVideoUrl(URL.createObjectURL(blob));
+      playUISound('success');
+    } catch (err: any) {
+      console.error('Video gen failed', err);
+      if (err?.message?.includes("Requested entity was not found")) {
+        setShowApiKeyDialog(true);
+      }
+    } finally {
+      setIsVideoGenerating(false);
+    }
+  };
+
+  const handleGenerateVideoClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+    if (!hasKey) {
+      setShowApiKeyDialog(true);
+    } else {
+      executeVideoGeneration();
+    }
+  };
+
+  const handleSelectKey = async () => {
+    await (window as any).aistudio.openSelectKey();
+    setShowApiKeyDialog(false);
+    executeVideoGeneration();
+  };
+
+  const handleAddToCalendar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    playUISound('click');
+    const url = generateGoogleCalendarUrl({
+      title: `[INTEL] ${news.title}`,
+      details: `${news.content}\n\nSources: ${news.sources.map(s => s.uri).join(', ')}`,
+      location: news.location,
+      startTime: news.timestamp
+    });
+    window.open(url, '_blank');
+  };
+
+  const setQuickReminder = (minutes: number) => {
+    if (!onSetReminder) return;
+    const reminder: IntelligenceReminder = {
+      id: `REM-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+      intelTitle: news.title,
+      triggerTimestamp: Date.now() + (minutes * 60 * 1000),
+      severity: news.sentiment === 'CRITICAL' ? 'CRITICAL' : 'ELEVATED',
+      status: 'PENDING',
+      category: news.category
+    };
+    onSetReminder(reminder);
+    setShowReminderPicker(false);
+    playUISound('success');
+  };
+
+  const reliabilityBadge = useMemo(() => {
+    if (!verificationReport) return null;
+    const score = verificationReport.truthScore;
+    let colorClass = "bg-emerald-500/20 border-emerald-500/40 text-emerald-400";
+    let statusText = "VERIFIED_HIGH";
+    
+    if (score < 50) {
+      colorClass = "bg-red-500/20 border-red-500/40 text-red-400";
+      statusText = "VERIFIED_LOW";
+    } else if (score < 80) {
+      colorClass = "bg-amber-500/20 border-amber-500/40 text-amber-400";
+      statusText = "VERIFIED_MODERATE";
+    }
+
+    return (
+      <div className={`absolute top-4 right-4 px-3 py-1 backdrop-blur-md rounded-lg text-[8px] font-black border uppercase tracking-widest flex items-center gap-2 animate-in zoom-in-50 duration-500 shadow-lg ${colorClass}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+        {statusText}: {score}%
+      </div>
+    );
+  }, [verificationReport]);
+
   return (
-    <div className={`group relative glass rounded-[2.5rem] overflow-hidden transition-all duration-700 flex flex-col h-full bg-slate-900/20 hover:bg-slate-900/40 border border-white/5 hover:border-accent/30 shadow-2xl ${isExpanded ? 'md:col-span-2' : ''}`}>
-      <div className={`relative overflow-hidden transition-all duration-700 ${isExpanded ? 'h-[24rem]' : 'h-56'}`}>
+    <div className={`glass rounded-[2.5rem] overflow-hidden flex flex-col transition-all duration-500 border ${isSaved ? 'border-accent/60 bg-accent/5 shadow-[0_0_30px_rgba(var(--accent-primary-rgb),0.1)]' : 'border-white/5'} hover:border-accent/30 group ${isExpanded ? 'md:col-span-2' : ''}`}>
+      <div className="relative h-48 overflow-hidden">
         {videoUrl ? (
-          <video src={videoUrl} controls autoPlay className="w-full h-full object-cover" />
+          <div className="w-full h-full border-b-2 border-accent animate-in fade-in">
+             <video src={videoUrl} controls autoPlay loop className="w-full h-full object-cover" />
+          </div>
         ) : (
-          <img 
-            src={news.image || FUTURISTIC_PLACEHOLDER} 
-            alt={news.title}
-            className={`w-full h-full object-cover transition-transform duration-[4s] group-hover:scale-110 ${isVideoGenerating ? 'blur-2xl' : ''}`} 
-          />
+          <img src={news.image} alt={news.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
         
+        <div className="absolute top-4 left-4 flex gap-2">
+          <span className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-black text-accent border border-accent/20 uppercase tracking-widest">{news.category}</span>
+          {isSaved && <span className="px-3 py-1 bg-accent rounded-lg text-[8px] font-black text-white uppercase tracking-widest shadow-lg">ARCHIVED</span>}
+        </div>
+
+        {reliabilityBadge}
+        
+        <div className="absolute bottom-4 right-4 flex gap-2">
+          <button onClick={toggleSave} data-tooltip={isSaved ? "Purge Archive" : "Archive Intel"} className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg transition-all ${isSaved ? 'bg-accent text-white' : 'hover:bg-accent/20'}`}>🔖</button>
+          <button onClick={startSecureShare} data-tooltip="Secure Relay" className="w-10 h-10 glass rounded-xl flex items-center justify-center text-lg hover:bg-emerald-500/20 transition-all">📤</button>
+          <button onClick={handleVerify} data-tooltip="Verify Intel" className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg transition-all ${verificationReport ? 'bg-emerald-500/20 border-emerald-500/40' : 'hover:bg-emerald-500/20'}`}>🛡️</button>
+          <button onClick={handleGenerateVideoClick} data-tooltip="Synthesize Visuals" className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg hover:bg-accent/20 transition-all ${isVideoGenerating ? 'animate-pulse' : ''}`}>
+             🎬
+          </button>
+          <button onClick={handleAddToCalendar} data-tooltip="Add to Calendar" className="w-10 h-10 glass rounded-xl flex items-center justify-center text-lg hover:bg-blue-500/20 transition-all">📅</button>
+          <button onClick={() => setShowReminderPicker(!showReminderPicker)} data-tooltip="Schedule Alert" className={`w-10 h-10 glass rounded-xl flex items-center justify-center text-lg transition-all ${showReminderPicker ? 'bg-accent text-white' : 'hover:bg-amber-500/20'}`}>🔔</button>
+          <button onClick={() => onVRView?.(news.image || '', news.title)} data-tooltip="Spatial View" className="w-10 h-10 glass rounded-xl flex items-center justify-center text-lg hover:bg-purple-500/20 transition-all">🥽</button>
+        </div>
+
         {isVideoGenerating && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md z-50 p-10 text-center">
-            <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4"></div>
-            <span className="text-[10px] font-heading font-black text-accent tracking-[0.3em] animate-pulse uppercase">Making Video...</span>
-          </div>
-        )}
-
-        {errorMsg && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 backdrop-blur-md z-[60] p-10 text-center animate-in fade-in duration-300">
-            <span className="text-[10px] font-heading font-black text-red-400 tracking-[0.3em] uppercase">{errorMsg}</span>
-            <button onClick={() => setErrorMsg(null)} className="mt-6 px-6 py-2 bg-white/10 border border-white/10 rounded-full text-[8px] font-black text-white">OK</button>
-          </div>
-        )}
-
-        <div className="absolute top-6 left-6 flex gap-3 z-30">
-          <span className="px-3 py-1 bg-black/60 text-[9px] font-black uppercase tracking-[0.2em] rounded-lg text-accent border border-accent/20">{news.category}</span>
-        </div>
-
-        <div className="absolute top-6 right-6 z-30 flex flex-col gap-3">
-           <button 
-             onClick={(e) => { e.stopPropagation(); onToggleSave && onToggleSave(news.id); }}
-             className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSaved ? 'bg-accent text-white shadow-accent' : 'bg-black/60 text-slate-400 hover:text-white border border-white/10'}`}
-           >
-             Save
-           </button>
-        </div>
-        
-        {!videoUrl && (
-          <div className="absolute bottom-6 right-6 flex gap-3 z-30">
-            <button 
-              onClick={handleWatchVideo} 
-              className="w-12 h-12 bg-accent/20 hover:bg-accent backdrop-blur-md border border-accent/30 rounded-2xl flex items-center justify-center text-xl transition-all"
-              title="Watch Video"
-            >
-              🎬
-            </button>
-          </div>
-        )}
-      </div>
-      
-      <div className="p-8 flex-1 flex flex-col relative">
-        <div className="flex items-center justify-between mb-4 text-[9px] font-mono text-slate-500 border-b border-white/5 pb-3">
-           <span className="uppercase font-bold tracking-widest">{news.sources[0]?.title || 'News'}</span>
-           <span className="flex items-center gap-2">
-             {readingTime}m Read
-           </span>
-        </div>
-
-        <h3 className={`font-heading font-black text-white leading-[1.1] mb-6 group-hover:text-accent transition-colors ${isExpanded ? 'text-4xl' : 'text-xl'}`}>
-          {news.title}
-        </h3>
-        
-        <div 
-          onClick={!isExpanded ? toggleExpand : undefined}
-          className={`grid transition-all duration-700 ease-in-out cursor-pointer ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-        >
-          <div className="overflow-hidden">
-             <div className="relative">
-               <p className={`text-xs text-slate-400 font-mono leading-relaxed transition-all duration-700 ${isExpanded ? 'mb-8' : 'line-clamp-3 mb-2'}`}>
-                 {news.content || "Loading news..."}
-               </p>
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-300">
+             <div className="w-20 h-20 relative mb-6">
+                <div className="absolute inset-0 border-4 border-accent/20 rounded-full"></div>
+                <div className="absolute inset-0 border-t-4 border-accent rounded-full animate-spin"></div>
+                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl">📽️</span>
              </div>
+             <h4 className="text-xs font-heading font-black text-white uppercase tracking-[0.3em] mb-4">Uplink in Progress</h4>
+             <p className="text-[10px] font-mono text-accent animate-pulse uppercase tracking-widest min-h-[1.5em]">
+                {REASSURING_MESSAGES[loadingMsgIdx]}
+             </p>
+             <p className="text-[8px] font-mono text-slate-500 uppercase mt-8 max-w-xs">
+                Video synthesis can take up to 2-3 minutes. Protocol requires maintaining active connection.
+             </p>
+          </div>
+        )}
 
-             {isExpanded && (
-               <div className="space-y-6 pt-6 border-t border-white/5">
-                <div className="glass p-5 rounded-3xl border border-accent/20 bg-accent/5 flex items-center gap-5 shadow-inner">
-                   <button 
-                     onClick={toggleAudio}
-                     className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isAudioPlaying ? 'bg-red-500 text-white animate-pulse' : 'bg-accent text-white hover:scale-105'}`}
-                   >
-                     {isAudioPlaying ? 'Stop' : 'Play'}
-                   </button>
-                   <div className="flex-1">
-                     <div className="text-[10px] font-black text-accent uppercase tracking-widest mb-2 flex justify-between">
-                       <span>Listen to News</span>
-                       {isAudioLoading && <span className="animate-pulse">Loading...</span>}
-                     </div>
-                   </div>
-                </div>
-               </div>
-             )}
+        {showApiKeyDialog && (
+          <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-md z-[70] flex flex-col items-center justify-center p-8 text-center animate-in zoom-in-95 duration-300">
+             <h4 className="text-xs font-heading font-black text-white uppercase tracking-widest mb-4">Auth Required</h4>
+             <p className="text-[9px] font-mono text-slate-400 mb-6 leading-relaxed">
+                Volumetric video synthesis requires a paid GCP project API key. Select a key to proceed with the Veo protocol.
+             </p>
+             <a 
+               href="https://ai.google.dev/gemini-api/docs/billing" 
+               target="_blank" 
+               className="text-[8px] font-mono text-accent hover:underline uppercase mb-8 block"
+             >
+               View Billing Documentation ↗
+             </a>
+             <div className="flex flex-col w-full gap-2">
+                <button 
+                  onClick={handleSelectKey}
+                  className="w-full py-4 bg-accent text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all"
+                >
+                  Select API Key
+                </button>
+                <button 
+                  onClick={() => setShowApiKeyDialog(false)}
+                  className="w-full py-3 text-[8px] font-mono text-slate-500 uppercase hover:text-white"
+                >
+                  Cancel Protocol
+                </button>
+             </div>
+          </div>
+        )}
+
+        {showReminderPicker && (
+          <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-md z-40 flex flex-col items-center justify-center p-6 space-y-6 animate-in zoom-in-95 duration-300">
+             <h4 className="text-[10px] font-heading font-black text-white uppercase tracking-widest">Schedule Watch Alert</h4>
+             <div className="grid grid-cols-2 gap-3 w-full">
+                {[5, 15, 60, 240].map(m => (
+                  <button 
+                    key={m} 
+                    onClick={() => setQuickReminder(m)}
+                    className="py-3 bg-white/5 border border-white/10 rounded-2xl text-[9px] font-mono text-slate-300 hover:bg-accent hover:text-white hover:border-accent transition-all"
+                  >
+                    IN {m >= 60 ? `${m/60}H` : `${m}M`}
+                  </button>
+                ))}
+             </div>
+             <button onClick={() => setShowReminderPicker(false)} className="text-[8px] font-mono text-slate-500 uppercase hover:text-white pt-2">Cancel</button>
+          </div>
+        )}
+
+        {isSharing && (
+          <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-300">
+             <div className="w-20 h-1 bg-white/10 rounded-full mb-8 overflow-hidden">
+                <div className="h-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all" style={{ width: `${shareProgress}%` }}></div>
+             </div>
+             <h4 className="text-xs font-heading font-black text-white uppercase tracking-[0.3em] mb-2">Establishing Secure Relay</h4>
+             <p className="text-[8px] font-mono text-emerald-500 uppercase animate-pulse">
+                {shareProgress < 100 ? `BROADCASTING_BITSTREAM_${Math.random().toString(16).substr(2, 6).toUpperCase()}...` : 'UPLINK_STABLE_RECON_SENT'}
+             </p>
+             <div className="mt-6 flex gap-1 h-3 overflow-hidden">
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className={`w-1 h-full bg-emerald-500/30 ${i*8 < shareProgress ? 'bg-emerald-500 animate-pulse' : ''}`}></div>
+                ))}
+             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-8 flex-1 flex flex-col">
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">👤</span>
+            <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">{news.author || 'ANONYMOUS_SOURCE'}</span>
+          </div>
+          <div className="h-3 w-px bg-white/10 hidden sm:block"></div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">📅</span>
+            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{formattedDate}</span>
           </div>
         </div>
 
-        <div className="mt-auto pt-8 flex gap-4">
+        <h3 className="text-xl font-heading font-black text-white uppercase leading-tight tracking-tighter mb-4 group-hover:text-accent transition-colors">{news.title}</h3>
+        
+        <p className={`text-[11px] font-mono text-slate-400 leading-relaxed mb-6 ${isExpanded ? '' : 'line-clamp-3'}`}>
+          {news.content}
+        </p>
+
+        {verificationReport && (
+          <div className="mb-6 p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 animate-in slide-in-from-top-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Verification_Protocol_Alpha</span>
+              <span className="text-[10px] font-heading font-bold text-white">{verificationReport.truthScore}% TRUTH</span>
+            </div>
+            <p className="text-[10px] font-mono text-slate-300 italic">"{verificationReport.analysis}"</p>
+          </div>
+        )}
+
+        <div className="mt-auto pt-6 border-t border-white/5 flex gap-4">
           <button 
-            onClick={toggleAudio} 
-            disabled={isAudioLoading} 
-            className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${isAudioPlaying ? 'bg-red-600 text-white' : 'bg-accent text-white'}`}
+            onClick={toggleAudio}
+            disabled={isAudioLoading}
+            className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${isAudioPlaying ? 'bg-red-600' : 'bg-accent'} text-white shadow-lg`}
           >
-            {isAudioLoading ? 'Loading...' : isAudioPlaying ? 'Stop Audio' : 'Listen Now'}
+            {isAudioLoading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (isAudioPlaying ? '⏹ Terminate' : '▶ Audio_Intel')}
           </button>
-          
           <button 
-            onClick={toggleExpand} 
-            className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${isExpanded ? 'bg-white/10 text-white' : 'border-white/10 text-slate-500'}`}
+            onClick={() => { setIsExpanded(!isExpanded); playUISound('click'); }}
+            className="px-6 py-4 glass rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all border border-white/10"
           >
-            {isExpanded ? 'Collapse' : 'Read More'}
+            {isExpanded ? 'Collapse' : 'Expand'}
           </button>
         </div>
       </div>
+
+      {isVerifying && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50 text-center p-10">
+          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mb-6"></div>
+          <span className="text-xs font-heading font-black text-accent uppercase tracking-widest animate-pulse">Running Neural Fact-Check...</span>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { IntelligenceService } from '../services/geminiService';
 import { CyberThreat } from '../types';
@@ -7,6 +6,26 @@ import { playUISound } from '../utils/audioUtils';
 interface SecurityConsoleProps {
   intelService: IntelligenceService;
 }
+
+const ThreatSkeleton = () => (
+  <div className="space-y-4">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="p-6 rounded-3xl border border-white/5 bg-white/5 space-y-4 animate-pulse">
+        <div className="flex justify-between items-start">
+          <div className="space-y-2 flex-1">
+            <div className="w-1/4 h-2 bg-white/10 rounded-full shimmer"></div>
+            <div className="w-1/2 h-6 bg-white/10 rounded-xl shimmer"></div>
+          </div>
+          <div className="w-20 h-5 bg-white/10 rounded-full shimmer"></div>
+        </div>
+        <div className="flex justify-between">
+          <div className="w-1/3 h-2 bg-white/5 rounded-full shimmer"></div>
+          <div className="w-1/4 h-2 bg-white/5 rounded-full shimmer"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const SecurityConsole: React.FC<SecurityConsoleProps> = ({ intelService }) => {
   const [threats, setThreats] = useState<CyberThreat[]>([]);
@@ -77,38 +96,37 @@ const SecurityConsole: React.FC<SecurityConsoleProps> = ({ intelService }) => {
               </h3>
            </div>
 
-           <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 relative z-10">
+           <div className="flex-1 overflow-y-auto no-scrollbar relative z-10">
               {loading ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-30 space-y-4">
-                   <div className="w-12 h-12 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                   <span className="text-[10px] font-mono uppercase tracking-widest">Scanning...</span>
-                </div>
+                <ThreatSkeleton />
               ) : threats.length > 0 ? (
-                threats.map((t) => (
-                  <div 
-                    key={t.id} 
-                    onClick={() => { setSelectedThreat(t); playUISound('click'); }}
-                    className={`group p-6 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${
-                      selectedThreat?.id === t.id ? 'bg-red-500/10 border-red-500/40' : 'bg-white/5 border-white/10 hover:border-red-500/20'
-                    }`}
-                  >
-                     <div className="flex justify-between items-start mb-2">
-                        <div className="flex flex-col">
-                           <span className="text-[10px] font-mono text-slate-500 uppercase font-black">IP: {t.ip}</span>
-                           <h4 className="text-lg font-heading font-black text-white uppercase mt-1 tracking-tighter">{t.type.replace('_', ' ')}</h4>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${getSeverityColor(t.severity)}`}>
-                           {t.severity}
-                        </span>
-                     </div>
-                     <div className="flex items-center justify-between text-[9px] font-mono">
-                        <span className="text-slate-400">From: {t.origin.toUpperCase()}</span>
-                        <span className={t.status === 'NEUTRALIZED' ? 'text-emerald-500 font-black' : 'text-red-500'}>
-                          {t.status}
-                        </span>
-                     </div>
-                  </div>
-                ))
+                <div className="space-y-4">
+                  {threats.map((t) => (
+                    <div 
+                      key={t.id} 
+                      onClick={() => { setSelectedThreat(t); playUISound('click'); }}
+                      className={`group p-6 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${
+                        selectedThreat?.id === t.id ? 'bg-red-500/10 border-red-500/40' : 'bg-white/5 border-white/10 hover:border-red-500/20'
+                      }`}
+                    >
+                       <div className="flex justify-between items-start mb-2">
+                          <div className="flex flex-col">
+                             <span className="text-[10px] font-mono text-slate-500 uppercase font-black">IP: {t.ip}</span>
+                             <h4 className="text-lg font-heading font-black text-white uppercase mt-1 tracking-tighter">{t.type.replace('_', ' ')}</h4>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${getSeverityColor(t.severity)}`}>
+                             {t.severity}
+                          </span>
+                       </div>
+                       <div className="flex items-center justify-between text-[9px] font-mono">
+                          <span className="text-slate-400">From: {t.origin.toUpperCase()}</span>
+                          <span className={t.status === 'NEUTRALIZED' ? 'text-emerald-500 font-black' : 'text-red-500'}>
+                            {t.status}
+                          </span>
+                       </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-6">
                    <p className="text-[10px] font-mono uppercase tracking-[0.4em]">Everything is safe.</p>

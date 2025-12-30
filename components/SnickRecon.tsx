@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { IntelligenceService, SocialIntercept } from '../services/geminiService';
+// Fix: Removed non-existent SocialIntercept import from services/geminiService
+import { IntelligenceService } from '../services/geminiService';
 import { DecodedSignal } from '../types';
 import { playUISound } from '../utils/audioUtils';
 

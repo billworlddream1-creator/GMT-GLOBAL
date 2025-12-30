@@ -27,6 +27,36 @@ const GALAXY_SECTORS = [
   { id: 'SEC-CORE', name: 'Galactic Core', x: 0, y: 0, size: 90 },
 ];
 
+const ReportSkeleton = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-10">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="glass p-12 pl-20 rounded-[3.5rem] border border-white/10 bg-white/5 space-y-8 animate-pulse relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-3.5 h-full bg-white/5 shimmer"></div>
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-6 w-full">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 shimmer"></div>
+            <div className="space-y-3 flex-1">
+              <div className="w-3/4 h-8 bg-white/10 rounded-xl shimmer"></div>
+              <div className="w-1/2 h-8 bg-white/10 rounded-xl shimmer"></div>
+            </div>
+          </div>
+          <div className="w-24 h-8 bg-white/10 rounded-full shimmer"></div>
+        </div>
+        <div className="glass p-6 rounded-[2rem] border border-white/5 bg-white/5 h-24 shimmer"></div>
+        <div className="space-y-4">
+          <div className="w-1/3 h-3 bg-white/10 rounded-full shimmer"></div>
+          {[...Array(3)].map((_, j) => (
+            <div key={j} className="flex gap-5 items-center">
+              <div className="w-4 h-4 bg-white/10 rounded shimmer"></div>
+              <div className="w-full h-3 bg-white/5 rounded-full shimmer"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 const RenderSignalNode = (props: any) => {
   const { cx, cy, fill, payload, isSelected } = props;
   if (!cx || !cy) return null;
@@ -35,46 +65,77 @@ const RenderSignalNode = (props: any) => {
   const isVanishing = payload?.isVanishing;
 
   return (
-    <g className={`signal-node-group ${isVanishing ? 'opacity-0' : 'opacity-100'} transition-opacity duration-1000`}>
+    <g className={`signal-node-group ${isVanishing ? 'opacity-0' : 'opacity-100'} transition-all duration-1000 animate-signal-entry`}>
+      {/* Outer Pulse Ring 1 */}
+      {!isVanishing && (
+        <circle
+          cx={cx}
+          cy={cy}
+          r={isHigh ? 20 : 14}
+          fill="none"
+          stroke={fill}
+          strokeWidth={1}
+          className="animate-signal-pulse-outer"
+          opacity={0.6}
+        />
+      )}
+      
+      {/* Outer Pulse Ring 2 (Delayed) */}
+      {!isVanishing && (
+        <circle
+          cx={cx}
+          cy={cy}
+          r={isHigh ? 20 : 14}
+          fill="none"
+          stroke={fill}
+          strokeWidth={1}
+          className="animate-signal-pulse-outer-delayed"
+          opacity={0.3}
+        />
+      )}
+
+      {/* Main Signal Core Glow */}
       <circle
         cx={cx}
         cy={cy}
-        r={isHigh ? 16 : 10}
-        fill="none"
-        stroke={isVanishing ? '#94a3b8' : fill}
-        strokeWidth={isSelected ? 3 : 1.5}
-        className={isVanishing ? '' : 'animate-signal-ping'}
-        opacity={isVanishing ? 0.3 : 1}
+        r={isHigh ? 12 : 8}
+        fill={isVanishing ? 'none' : fill}
+        opacity={isVanishing ? 0.2 : 0.3}
+        className={isHigh && !isVanishing ? 'animate-pulse' : ''}
       />
       
+      {/* Selection Target Reticle */}
       {isSelected && !isVanishing && (
         <g>
            <circle
             cx={cx}
             cy={cy}
-            r={isHigh ? 24 : 18}
+            r={isHigh ? 30 : 22}
             fill="none"
             stroke="white"
             strokeWidth={1}
-            strokeDasharray="4 4"
-            className="animate-spin-slow opacity-60"
+            strokeDasharray="2 6"
+            className="animate-spin-slow opacity-80"
           />
           <path 
-            d={`M${cx-30} ${cy} L${cx-15} ${cy} M${cx+30} ${cy} L${cx+15} ${cy} M${cx} ${cy-30} L${cx} ${cy-15} M${cx} ${cy+30} L${cx} ${cy+15}`} 
-            stroke="white" 
-            strokeWidth="1" 
-            opacity="0.5" 
+            d={`M${cx-35} ${cy} L${cx-20} ${cy} M${cx+35} ${cy} L${cx+20} ${cy} M${cx} ${cy-35} L${cx} ${cy-20} M${cx} ${cy+35} L${cx} ${cy+20}`} 
+            stroke="#fff" 
+            strokeWidth="1.5" 
+            opacity="0.8" 
+            className="animate-pulse"
           />
+          <rect x={cx-38} y={cy-38} width={76} height={76} fill="none" stroke="#fff" strokeWidth="0.5" opacity="0.2" className="animate-signal-scan" />
         </g>
       )}
       
+      {/* Core Node */}
       <circle
         cx={cx}
         cy={cy}
-        r={isHigh ? 7 : 5}
+        r={isHigh ? 6 : 4}
         fill={isSelected ? '#fff' : (isVanishing ? '#475569' : fill)}
-        opacity={isVanishing ? 0.2 : 1}
-        className={`${isVanishing ? '' : 'cursor-pointer transition-all duration-300 hover:scale-[1.75]'}`}
+        opacity={isVanishing ? 0.4 : 1}
+        className={`${isVanishing ? '' : 'cursor-pointer transition-all duration-300 hover:scale-[1.8]'}`}
       />
     </g>
   );
@@ -93,20 +154,39 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
   const [syncProgress, setSyncProgress] = useState(0);
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0 });
   const [activeSector, setActiveSector] = useState<string>('SEC-CORE');
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(Notification.permission);
   
   const [isDecoding, setIsDecoding] = useState(false);
   const [decryptedData, setDecryptedData] = useState<DecodedSignal | null>(null);
   const [showDecodeModal, setShowDecodeModal] = useState(false);
 
+  const seenSignalIds = useRef<Set<string>>(new Set());
+
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     const saved = localStorage.getItem('gmt_intel_history');
     return saved ? JSON.parse(saved) : [];
   });
-  const [showHistory, setShowHistory] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
 
   const isRefreshingRef = useRef(false);
+
+  const requestNotifPermission = async () => {
+    const perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+    playUISound('click');
+  };
+
+  const triggerNotif = useCallback((sig: IntelligenceSignal) => {
+    if (notifPermission === 'granted') {
+      new Notification(`[CRITICAL] GMT Intelligence Alert`, {
+        body: `${sig.location}: ${sig.description}`,
+        icon: '/favicon.ico', // Fallback icon
+        tag: sig.id,
+      });
+      playUISound('alert');
+    }
+  }, [notifPermission]);
 
   const fetchSignals = useCallback(async (silent = false) => {
     if (isRefreshingRef.current) return;
@@ -118,6 +198,14 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
     try {
       const data = await intelService.getSatelliteSignals();
       
+      // Process new signals for notifications
+      data.forEach(sig => {
+        if (sig.urgency === 'HIGH' && !seenSignalIds.current.has(sig.id)) {
+          triggerNotif(sig);
+        }
+        seenSignalIds.current.add(sig.id);
+      });
+
       setSignals(prevSignals => {
         const removed = prevSignals.filter(oldSig => !data.find(newSig => newSig.id === oldSig.id));
         if (removed.length > 0) {
@@ -142,7 +230,7 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
       setIsRefreshing(false);
       isRefreshingRef.current = false;
     }
-  }, [intelService]);
+  }, [intelService, triggerNotif]);
 
   useEffect(() => {
     const cleanup = setInterval(() => {
@@ -156,7 +244,6 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
     if (!query.trim()) return;
     setLoading(true);
     setIsDeepScanning(true);
-    setShowHistory(false);
     playUISound('startup');
 
     setSearchHistory(prev => {
@@ -333,6 +420,19 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
           </div>
           <div className="text-right flex flex-col items-end gap-2">
             <div className="flex items-center gap-3">
+               {notifPermission !== 'granted' ? (
+                 <button 
+                   onClick={requestNotifPermission}
+                   className="px-4 py-1.5 bg-red-500/10 border border-red-500/20 rounded-xl font-mono text-[10px] text-red-400 hover:bg-red-500 hover:text-white transition-all animate-pulse"
+                 >
+                   Enable_Alerts_⚠
+                 </button>
+               ) : (
+                 <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl font-mono text-[10px] text-emerald-400">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                   <span>Watcher_Active</span>
+                 </div>
+               )}
                <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
                <span className="text-[10px] font-mono text-accent font-black uppercase tracking-widest">{isDeepScanning ? 'Searching...' : 'Connected'}</span>
             </div>
@@ -473,7 +573,7 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-10">
         {loading ? (
-          [...Array(4)].map((_, i) => <div key={i} className="glass h-[400px] rounded-[3.5rem] border border-white/20 animate-pulse bg-white/5"></div>)
+          <ReportSkeleton />
         ) : reports.map((report, idx) => {
             const visuals = threatVisuals(report.threatLevel);
             return (
@@ -504,16 +604,42 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
       </div>
 
       <style>{`
-        @keyframes signal-ping {
-          0% { transform: scale(1); opacity: 0.9; stroke-width: 2.5; }
-          100% { transform: scale(4.5); opacity: 0; stroke-width: 0.5; }
+        @keyframes signal-entry {
+          from { transform: scale(0); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes signal-pulse-outer {
+          0% { transform: scale(1); opacity: 0.6; stroke-width: 2; }
+          100% { transform: scale(3.5); opacity: 0; stroke-width: 0.5; }
+        }
+        @keyframes signal-pulse-outer-delayed {
+          0% { transform: scale(1); opacity: 0.3; stroke-width: 1; }
+          100% { transform: scale(4.5); opacity: 0; stroke-width: 0.2; }
+        }
+        @keyframes signal-scan {
+          0% { transform: scale(0.8); opacity: 0; }
+          50% { transform: scale(1.1); opacity: 0.5; }
+          100% { transform: scale(0.8); opacity: 0; }
         }
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        .animate-signal-ping {
-          animation: signal-ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+        .animate-signal-entry {
+          animation: signal-entry 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          transform-origin: center;
+        }
+        .animate-signal-pulse-outer {
+          animation: signal-pulse-outer 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+          transform-origin: center;
+        }
+        .animate-signal-pulse-outer-delayed {
+          animation: signal-pulse-outer-delayed 3.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+          animation-delay: 1.2s;
+          transform-origin: center;
+        }
+        .animate-signal-scan {
+          animation: signal-scan 2s ease-in-out infinite;
           transform-origin: center;
         }
         .animate-spin-slow {
