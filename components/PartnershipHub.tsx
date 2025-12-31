@@ -70,7 +70,7 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
           <div className="grid grid-cols-3 gap-10 border-t border-white/5 pt-8">
             <div>
               <span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Portfolio_Valuation</span>
-              <span className="text-2xl font-heading font-black text-white">${activePartnerships.reduce((s, p) => s + p.amount, 0).toLocaleString()}</span>
+              <span className="text-2xl font-heading font-black text-white">${activePartnerships.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}</span>
             </div>
             <div>
               <span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Neural_Dividends</span>
@@ -168,7 +168,7 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
                <div key={p.id} className="p-6 bg-black/40 border border-white/5 rounded-3xl hover:border-blue-500/30 transition-all group">
                   <div className="flex justify-between items-start mb-4">
                      <span className="text-[8px] font-mono text-blue-500 font-black px-2 py-0.5 bg-blue-500/10 rounded uppercase">STAKED</span>
-                     <span className="text-[8px] font-mono text-slate-600">ID_{p.id.split('-').pop()}</span>
+                     <span className="text-[8px] font-mono text-slate-600">ID_{(p.id || '').split('-').pop()}</span>
                   </div>
                   <h5 className="text-sm font-heading font-black text-white uppercase mb-2">{p.role.replace('_', ' ')}</h5>
                   <div className="flex justify-between items-end border-t border-white/5 pt-4 mt-4">

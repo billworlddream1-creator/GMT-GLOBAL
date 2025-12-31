@@ -38,7 +38,7 @@ import AuthModal from './components/AuthModal';
 import { playUISound } from './utils/audioUtils';
 
 const IntelHUD = ({ xp, rank, signalStrength }: { xp: number, rank: string, signalStrength: number }) => (
-  <div className="fixed top-6 right-12 z-[200] flex items-center gap-6 glass px-6 py-3 rounded-2xl border border-white/5 bg-slate-900/40 pointer-events-none">
+  <div className="fixed top-6 right-12 z-[200] hidden md:flex items-center gap-6 glass px-6 py-3 rounded-2xl border border-white/5 bg-slate-900/40 pointer-events-none">
     <div className="flex flex-col items-end">
       <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">Signal_Uplink</span>
       <div className="flex gap-0.5 mt-1">
@@ -100,6 +100,7 @@ const App: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('nexus_session'));
   const [view, setView] = useState<ViewType>('feed');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [vrData, setVrData] = useState<{ url: string; title: string } | null>(null);
   const [isAutoReaderActive, setIsAutoReaderActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,7 +183,6 @@ const App: React.FC = () => {
   const triggerDesktopNotification = useCallback((title: string, body: string, category?: string) => {
     if (!userProfile.notificationSettings.enabled) return;
     
-    // Check if category is enabled in settings
     if (category) {
       const normalizedCat = category.toUpperCase().replace(/\s/g, '_');
       const isCatEnabled = userProfile.notificationSettings.categories.some(c => 
@@ -194,7 +194,7 @@ const App: React.FC = () => {
     if (Notification.permission === 'granted') {
       new Notification(`[GMT] ${title}`, {
         body,
-        icon: '/favicon.ico', // Placeholder icon
+        icon: '/favicon.ico',
       });
     }
   }, [userProfile.notificationSettings]);
@@ -210,7 +210,6 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Reminder Checker
   useEffect(() => {
     const checker = setInterval(() => {
       const now = Date.now();
@@ -238,6 +237,7 @@ const App: React.FC = () => {
       setPage(1);
       setHasMore(true);
     } else {
+      if (loadingMore || !hasMore) return;
       setLoadingMore(true);
     }
     
@@ -251,38 +251,42 @@ const App: React.FC = () => {
       } else {
         setNewsFeed(prev => isInitial ? news : [...prev, ...news]);
         
-        // Notify for critical items if settings allow
         if (news.length > 0) {
           const topItem = news[0];
-          if (topItem.sentiment === 'CRITICAL' || isInitial === false) {
+          if (isInitial || topItem.sentiment === 'CRITICAL') {
              triggerDesktopNotification('NEW INTEL INBOUND', topItem.title, topItem.category);
           }
         }
 
-        if (!isInitial) setPage(targetPage);
+        if (!isInitial) {
+          setPage(targetPage);
+        }
       }
+      
       if (isInitial) addActivity(`Injected Intel Stream: ${query}`, 'Intelligence');
+      else addActivity(`Appended Page ${targetPage}: ${query}`, 'Intelligence');
+      
     } catch (e: any) {
       setError(e?.message || "Tactical uplink synchronization failure.");
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [addActivity, page, triggerDesktopNotification]);
+  }, [addActivity, page, triggerDesktopNotification, loadingMore, hasMore]);
 
   useEffect(() => {
     if (isAuthenticated) fetchNews('WORLD_INTELLIGENCE', true);
   }, [isAuthenticated]);
 
   const lastNewsElementRef = useCallback((node: HTMLDivElement | null) => {
-    if (loading || loadingMore || view !== 'feed') return;
+    if (loading || loadingMore || view !== 'feed' || !hasMore) return;
     if (observerRef.current) observerRef.current.disconnect();
     
     observerRef.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
+      if (entries[0].isIntersecting && hasMore && !loadingMore) {
         fetchNews(searchTerm || 'WORLD_INTELLIGENCE', false);
       }
-    }, { threshold: 0.5 });
+    }, { threshold: 0.1 }); // Trigger earlier for smoother experience
     
     if (node) observerRef.current.observe(node);
   }, [loading, loadingMore, hasMore, fetchNews, searchTerm, view]);
@@ -326,42 +330,60 @@ const App: React.FC = () => {
         onLogout={() => { setIsAuthenticated(false); localStorage.removeItem('nexus_session'); }} 
         rank={getRank(userProfile.rankXp)}
         user={userProfile}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       <IntelHUD xp={userProfile.rankXp} rank={getRank(userProfile.rankXp)} signalStrength={signalStrength} />
       <ProcessMonitor />
       <QuickActionsDock setView={handleViewChange} />
 
-      <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
-        <header className="px-12 py-8 flex items-center justify-between border-b border-white/5 glass shrink-0 relative bg-slate-900/5">
-          <div className="flex flex-col">
-            <h2 className="text-3xl font-heading font-black text-white uppercase tracking-tighter leading-none">{view.replace(/-/g, ' ')}</h2>
-            <div className="flex items-center gap-3 mt-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-              <span className="text-[9px] font-mono text-accent uppercase tracking-[0.3em]">Uplink_Authorized</span>
+      <main className="flex-1 flex flex-col relative z-10 overflow-hidden transition-all duration-300">
+        <header className="px-6 lg:px-12 py-6 lg:py-8 flex items-center justify-between border-b border-white/5 glass shrink-0 relative bg-slate-900/5">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => { setIsSidebarOpen(!isSidebarOpen); playUISound('click'); }}
+              className="p-3 glass border-white/10 rounded-xl text-white hover:border-accent transition-all"
+            >
+              <span className="text-xl">☰</span>
+            </button>
+            <div className="flex flex-col">
+              <h2 className="text-xl lg:text-3xl font-heading font-black text-white uppercase tracking-tighter leading-none">{view.replace(/-/g, ' ')}</h2>
+              <div className="hidden sm:flex items-center gap-3 mt-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                <span className="text-[9px] font-mono text-accent uppercase tracking-[0.3em]">Uplink_Authorized</span>
+              </div>
             </div>
           </div>
 
-          {view === 'feed' && (
-            <form onSubmit={handleSearch} className="flex-1 max-w-xl mx-20 relative group">
-              <input 
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Scan intelligence stream..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 py-4 text-[11px] font-mono text-white focus:border-accent transition-all outline-none"
-              />
-              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
-            </form>
+          {(view === 'feed' || view === 'saved-intel') && (
+            <div className="flex-1 max-w-xl mx-6 lg:mx-20 relative group hidden sm:block">
+              {view === 'feed' ? (
+                <form onSubmit={handleSearch}>
+                  <input 
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Scan intelligence stream..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 py-4 text-[11px] font-mono text-white focus:border-accent transition-all outline-none"
+                  />
+                  <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+                </form>
+              ) : (
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest text-center py-4 glass rounded-2xl border border-white/5">
+                   Filtering_Archived_Nodes: {savedIntel.length} ACTIVE_RECORDS
+                </div>
+              )}
+            </div>
           )}
 
           <div className="text-right">
-            <div className="text-sm font-heading font-black text-white tracking-widest">{currentTime.toLocaleTimeString([], { hour12: false })}</div>
-            <div className="text-[8px] font-mono text-slate-500 uppercase tracking-widest mt-1">Grid_Ref: {Math.floor(Math.random() * 9999)}-{Math.floor(Math.random() * 9999)}</div>
+            <div className="text-xs lg:text-sm font-heading font-black text-white tracking-widest">{currentTime.toLocaleTimeString([], { hour12: false })}</div>
+            <div className="hidden sm:block text-[8px] font-mono text-slate-500 uppercase tracking-widest mt-1">Grid_Ref: {Math.floor(Math.random() * 9999)}-{Math.floor(Math.random() * 9999)}</div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-12 no-scrollbar relative">
+        <div className="flex-1 overflow-y-auto p-6 lg:p-12 no-scrollbar relative">
           {view === 'feed' && (
             loading ? <NewsFeedSkeleton /> : (
               <div className="space-y-12">
@@ -380,13 +402,42 @@ const App: React.FC = () => {
                     </div>
                   ))}
                 </div>
-                {loadingMore && <div className="grid grid-cols-3 gap-8"><NewsFeedSkeleton /></div>}
+                
+                {loadingMore && (
+                  <div className="py-20 flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
+                    <div className="relative w-16 h-16 flex items-center justify-center">
+                       <div className="absolute inset-0 border-4 border-accent/10 rounded-full"></div>
+                       <div className="absolute inset-0 border-t-4 border-accent rounded-full animate-spin"></div>
+                       <span className="text-xl">📡</span>
+                    </div>
+                    <div className="text-center space-y-2">
+                       <h4 className="text-xs font-heading font-black text-white uppercase tracking-widest animate-pulse">Inbound Intelligence Nodes</h4>
+                       <p className="text-[8px] font-mono text-slate-500 uppercase tracking-[0.5em]">Synchronizing Orbital Buffers...</p>
+                    </div>
+                  </div>
+                )}
+
+                {!hasMore && newsFeed.length > 0 && (
+                  <div className="py-20 text-center flex flex-col items-center gap-4 opacity-40">
+                    <div className="h-px w-24 bg-white/10"></div>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.5em]">End of terrestrial data stream reached</span>
+                    <div className="h-px w-24 bg-white/10"></div>
+                  </div>
+                )}
               </div>
             )
           )}
 
           {view === 'saved-intel' && (
-            <div className="space-y-12">
+            <div className="space-y-12 animate-in fade-in duration-700">
+               <div className="mb-10 glass p-10 rounded-[3rem] border border-white/10 bg-slate-900/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+                     <span className="text-8xl font-heading font-black">VAULT</span>
+                  </div>
+                  <h3 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">Archived_Intelligence</h3>
+                  <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em] mt-2">Local Persistence Buffer // Secured Dossiers</p>
+               </div>
+               
                {savedIntel.length > 0 ? (
                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {savedIntel.map((news) => (
@@ -402,9 +453,15 @@ const App: React.FC = () => {
                     ))}
                  </div>
                ) : (
-                 <div className="flex flex-col items-center justify-center py-40 opacity-20 text-center gap-6">
-                    <span className="text-8xl">🔖</span>
-                    <p className="text-sm font-mono uppercase tracking-[0.5em]">No intelligence reports archived in memory</p>
+                 <div className="flex flex-col items-center justify-center py-40 opacity-20 text-center gap-10">
+                    <div className="w-32 h-32 rounded-full border-4 border-dashed border-white/20 flex items-center justify-center">
+                       <span className="text-6xl">🔖</span>
+                    </div>
+                    <div className="space-y-4">
+                       <h4 className="text-xl font-heading font-black text-white uppercase tracking-widest">Archive_Empty</h4>
+                       <p className="text-[10px] font-mono uppercase tracking-[0.5em] max-w-md mx-auto">No intelligence reports have been committed to long-term memory. Toggle the bookmark icon on any intel card to begin archival.</p>
+                    </div>
+                    <button onClick={() => setView('feed')} className="px-10 py-4 glass border-accent/40 text-accent rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all">Return to Feed</button>
                  </div>
                )}
             </div>
@@ -444,7 +501,7 @@ const App: React.FC = () => {
           {view === 'subscription' && <SubscriptionHub currentLevel={userLevel} onUpgrade={(l) => { setUserLevel(l); localStorage.setItem('nexus_user_level', l); setView('feed'); }} />}
 
           {/* Persistent System Audit Logs */}
-          <div className="fixed bottom-10 right-10 w-64 glass p-6 rounded-[2rem] border-white/5 bg-slate-900/40 z-[150] opacity-80 hover:opacity-100 transition-opacity">
+          <div className="fixed bottom-10 right-10 w-64 glass p-6 rounded-[2rem] border-white/5 bg-slate-900/40 z-[150] opacity-80 hover:opacity-100 transition-opacity hidden xl:block">
             <h4 className="text-[9px] font-heading font-black text-white uppercase mb-4 tracking-widest flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> System_Audit
             </h4>

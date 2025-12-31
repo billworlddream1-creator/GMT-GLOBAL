@@ -31,8 +31,13 @@ const TranslatorHub: React.FC<TranslatorHubProps> = ({ intelService }) => {
   const handleSpeak = async () => {
     if (!translatedText || isSpeaking) return;
     setIsSpeaking(true);
+
+    // Randomize voice selection
+    const voices = ['Kore', 'Puck', 'Charon', 'Zephyr'];
+    const randomVoice = voices[Math.floor(Math.random() * voices.length)];
+
     try {
-      const audioData = await intelService.generateBroadcastAudio(translatedText);
+      const audioData = await intelService.generateBroadcastAudio(translatedText, randomVoice);
       if (audioData) {
         const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
         const ctx = new AudioContextClass({ sampleRate: 24000 });

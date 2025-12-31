@@ -1,80 +1,54 @@
 
-export const playUISound = (type: 'click' | 'hover' | 'alert' | 'startup' | 'success' | 'share') => {
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    const ctx = new AudioContextClass();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+export const playVocalFeedback = (type: 'click' | 'success' | 'alert' | 'startup') => {
+  if (!('speechSynthesis' in window)) return;
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+  const phrases = {
+    click: ['Acknowledged', 'Confirmed', 'Accessing', 'Processing', 'Node Fixed'],
+    success: ['Uplink Stable', 'Sync Complete', 'Data Secured', 'Encryption Active'],
+    alert: ['Warning', 'Signal Loss', 'Threat Detected', 'Unauthorized'],
+    startup: ['GMT Global Online', 'Neural Handshake Initialized', 'OS Loading']
+  };
 
-    const now = ctx.currentTime;
-
-    switch (type) {
-      case 'click':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, now);
-        osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        osc.start(now);
-        osc.stop(now + 0.1);
-        break;
-      case 'hover':
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(400, now);
-        gain.gain.setValueAtTime(0.02, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-        osc.start(now);
-        osc.stop(now + 0.05);
-        break;
-      case 'alert':
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.setValueAtTime(100, now + 0.1);
-        gain.gain.setValueAtTime(0.05, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-        osc.start(now);
-        osc.stop(now + 0.3);
-        break;
-      case 'success':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(500, now);
-        osc.frequency.exponentialRampToValueAtTime(1000, now + 0.2);
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc.start(now);
-        osc.stop(now + 0.2);
-        break;
-      case 'share':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, now);
-        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-        osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
-        gain.gain.setValueAtTime(0.08, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc.start(now);
-        osc.stop(now + 0.2);
-        break;
-      case 'startup':
-        const osc2 = ctx.createOscillator();
-        osc2.type = 'sawtooth';
-        osc2.frequency.setValueAtTime(50, now);
-        osc2.frequency.exponentialRampToValueAtTime(400, now + 1.5);
-        const gain2 = ctx.createGain();
-        gain2.gain.setValueAtTime(0, now);
-        gain2.gain.linearRampToValueAtTime(0.1, now + 0.5);
-        gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.start(now);
-        osc2.stop(now + 1.5);
-        break;
-    }
-  } catch (e) {
-    // Fail silently
+  const synth = window.speechSynthesis;
+  const phraseList = phrases[type];
+  const text = phraseList[Math.floor(Math.random() * phraseList.length)];
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  const voices = synth.getVoices();
+  
+  // Filter for English voices
+  const enVoices = voices.filter(v => v.lang.startsWith('en'));
+  
+  if (enVoices.length > 0) {
+    // Randomly pick a voice from the system
+    utterance.voice = enVoices[Math.floor(Math.random() * enVoices.length)];
   }
+
+  // Randomize pitch/rate to simulate different male/female personas
+  // 0.7-0.9 pitch roughly simulates deeper male tones, 1.1-1.4 simulates higher female tones
+  const isAltPersona = Math.random() > 0.5;
+  utterance.pitch = isAltPersona ? 0.75 : 1.25;
+  utterance.rate = 1.2;
+  utterance.volume = 0.5;
+
+  synth.cancel(); // Stop current speech to avoid stacking
+  synth.speak(utterance);
+};
+
+/**
+ * Triggered by UI interactions. 
+ * Oscillator-based sounds have been removed per request, 
+ * leaving only randomized vocal feedback.
+ */
+export const playUISound = (type: 'click' | 'hover' | 'alert' | 'startup' | 'success' | 'share') => {
+  // We only trigger vocal feedback for significant interactions
+  if (type === 'click' || type === 'alert' || type === 'success' || type === 'startup' || type === 'share') {
+    // Mapping 'share' to 'success' vocal pool
+    const feedbackType = type === 'share' ? 'success' : type as 'click' | 'success' | 'alert' | 'startup';
+    playVocalFeedback(feedbackType);
+  }
+  
+  // Synthetic beep logic removed to leave only male/female voices
 };
 
 export function decode(base64: string) {

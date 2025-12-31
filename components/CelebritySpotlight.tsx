@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { IntelligenceService } from '../services/geminiService';
 import { CelebrityDossier } from '../types';
@@ -7,11 +8,35 @@ interface CelebritySpotlightProps {
   intelService: IntelligenceService;
 }
 
+const CelebrityImageGallery = ({ images, onSelect }: { images: string[], onSelect: (url: string) => void }) => {
+  return (
+    <div className="space-y-6">
+      <h4 className="text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-4">Captured_Imagery_Grid</h4>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {images.map((url, i) => (
+          <div 
+            key={i} 
+            className="group relative aspect-square rounded-2xl overflow-hidden border border-white/5 bg-black/40 cursor-pointer hover:border-accent/40 transition-all"
+            onClick={() => { playUISound('click'); onSelect(url); }}
+          >
+            <img src={url} alt="VIP Asset" className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700" />
+            <div className="absolute inset-0 bg-accent/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-1 rounded text-[7px] font-mono text-white opacity-0 group-hover:opacity-100 transition-all">
+              IMG_0{i+1}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const CelebritySpotlight: React.FC<CelebritySpotlightProps> = ({ intelService }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dossier, setDossier] = useState<CelebrityDossier | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +146,13 @@ const CelebritySpotlight: React.FC<CelebritySpotlightProps> = ({ intelService })
                    </div>
                 </div>
              </div>
+
+             {/* Image Gallery Section */}
+             {dossier.imageUrls && dossier.imageUrls.length > 0 && (
+               <div className="glass p-10 rounded-[3.5rem] border border-white/10 bg-slate-900/20">
+                  <CelebrityImageGallery images={dossier.imageUrls} onSelect={setPreviewImage} />
+               </div>
+             )}
           </div>
 
           {/* Intelligence Matrix */}
@@ -170,6 +202,26 @@ const CelebritySpotlight: React.FC<CelebritySpotlightProps> = ({ intelService })
                    <p className="text-[9px] font-mono text-slate-500 uppercase">GMT Deep-Search algorithms currently monitoring social frequency buffers for new fluctuations.</p>
                 </div>
              </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-[5000] glass flex items-center justify-center p-10 animate-in fade-in duration-300"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl w-full aspect-square md:aspect-video rounded-[3rem] overflow-hidden border-2 border-accent/20 shadow-[0_0_100px_var(--accent-glow)]">
+             <img src={previewImage} alt="VIP High Res" className="w-full h-full object-cover" />
+             <div className="absolute bottom-10 left-10 glass px-6 py-3 rounded-2xl border border-white/10 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                <span className="text-[10px] font-heading font-black text-white uppercase tracking-widest">Enhanced_Imagery_Buffer</span>
+             </div>
+             <button 
+               className="absolute top-10 right-10 w-12 h-12 glass rounded-2xl flex items-center justify-center text-white text-xl hover:bg-white/10 transition-all"
+               onClick={() => setPreviewImage(null)}
+             >✕</button>
           </div>
         </div>
       )}

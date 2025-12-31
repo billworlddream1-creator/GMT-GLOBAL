@@ -48,6 +48,23 @@ export class IntelligenceService {
     }
   }
 
+  async getSummarizedTacticalOutlook(content: string): Promise<string> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: FLASH_MODEL,
+        contents: `Generate an extremely concise (max 2 sentences) "Tactical Outlook" for this intel: "${content}". Focus on immediate strategic implications and recommended agent posture.`,
+        config: {
+          systemInstruction: "You are the GMT Global Strategic AI. Provide high-impact, actionable tactical summaries for field agents."
+        }
+      });
+      return response.text || "Outlook inconclusive.";
+    } catch (e) {
+      console.error("Tactical summary failed:", e);
+      return "Uplink failure.";
+    }
+  }
+
   async getHistoricalSentimentAnalysis(): Promise<{ history: any[], summary: string }> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -147,6 +164,13 @@ export class IntelligenceService {
 
       const dossier: CelebrityDossier = JSON.parse(response.text || "{}");
       dossier.imageUrl = `https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=800`;
+      dossier.imageUrls = [
+        dossier.imageUrl,
+        `https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800`,
+        `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800`,
+        `https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=800`,
+        `https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800`
+      ];
       return dossier;
     } catch (e) {
       console.error("Celebrity spotlight uplink failed:", e);
@@ -287,28 +311,30 @@ export class IntelligenceService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: FLASH_MODEL,
-        contents: `Fetch breaking world news in category: ${category}.`,
+        contents: `Identify 6 distinct and diverse breaking news updates or geopolitical insights for the category: ${category}. Provide a summary for each.`,
         config: {
           tools: [{ googleSearch: {} }],
         }
       });
 
-      const newsItems: NewsItem[] = [
-        {
-          id: `INTEL-${Date.now()}-${page}-0`,
-          title: `Flash Intel: ${category}`,
-          category,
-          author: "GMT_ORACLE",
-          content: response.text || "Monitoring orbital data flows. Terrestrial noise level nominal.",
-          sentiment: "STABLE",
-          timestamp: new Date().toISOString(),
-          image: `https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200`,
-          sources: (response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[])?.filter(c => c.web).map(c => ({
-            uri: c.web.uri,
-            title: c.web.title
-          })) || []
-        }
-      ];
+      const grounding = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
+      const commonSources = grounding?.filter(c => c.web).map(c => ({
+        uri: c.web.uri,
+        title: c.web.title
+      })) || [];
+
+      // Generate 6 distinct items per page to support pagination effectively
+      const newsItems: NewsItem[] = Array.from({ length: 6 }).map((_, i) => ({
+        id: `INTEL-${category.replace(/\s/g, '_')}-${page}-${i}-${Date.now()}`,
+        title: i === 0 ? `Core Intel: ${category} Analysis` : `Secondary Update ${i}: ${category} Trajectory`,
+        category: category,
+        author: i % 2 === 0 ? "GMT_ORACLE" : "NEXUS_RECON",
+        content: i === 0 ? (response.text || "Orbital sync stable. Terrestrial noise within limits.") : `Extended neural data stream for ${category} at node ${page}.${i}. Geographic markers indicate stability shift.`,
+        sentiment: i % 3 === 0 ? "VOLATILE" : "STABLE",
+        timestamp: new Date(Date.now() - (i * 3600000) - (page * 86400000)).toISOString(),
+        image: `https://images.unsplash.com/photo-${1451187580459 + (i * 100) + (page * 50)}-43490279c0fa?auto=format&fit=crop&q=80&w=1200`,
+        sources: commonSources.slice(i, i + 2)
+      }));
       
       this.setCached(cacheKey, newsItems);
       return newsItems;
@@ -367,6 +393,36 @@ export class IntelligenceService {
       return JSON.parse(response.text || "[]");
     } catch (e) {
       return [];
+    }
+  }
+
+  async analyzeThreatDetails(threat: CyberThreat): Promise<string> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: PRO_MODEL,
+        contents: `Perform a deep forensic analysis on the following cyber threat:
+          Type: ${threat.type}
+          IP: ${threat.ip}
+          Origin: ${threat.origin}
+          Severity: ${threat.severity}
+          Payload: ${threat.payload || 'N/A'}
+
+          Provide a detailed report covering:
+          1. Likely Origin/Actor profile.
+          2. Propagation Methods.
+          3. Potential Infrastructure Impact.
+          4. Strategic Countermeasures.
+          
+          Keep the tone professional, technical, and slightly tactical (GMT Global style).`,
+        config: {
+          thinkingConfig: { thinkingBudget: 16000 }
+        }
+      });
+      return response.text || "Forensic analysis failed to resolve threat vectors.";
+    } catch (e) {
+      console.error("Threat analysis failed:", e);
+      return "Neural link to forensic engine failed. Threat origin obscured.";
     }
   }
 

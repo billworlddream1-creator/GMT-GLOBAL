@@ -26,12 +26,16 @@ const DossierBriefing: React.FC<DossierBriefingProps> = ({ news, intelService })
     setIsLoading(true);
     playUISound('startup');
     
+    // Male voices: Puck, Charon. Female voices: Kore, Zephyr.
+    const voices = ['Kore', 'Puck', 'Charon', 'Zephyr'];
+    const randomVoice = voices[Math.floor(Math.random() * voices.length)];
+
     try {
       const summaryText = news.length > 0 
         ? `Attention Agent. Today's global briefing includes ${news.length} critical items. Primary focus: ${news[0].title}. Secondary report: ${news[1]?.title || 'none'}. Stay alert.`
         : "No new intelligence to report at this time.";
 
-      const audioData = await intelService.generateBroadcastAudio(summaryText);
+      const audioData = await intelService.generateBroadcastAudio(summaryText, randomVoice);
       if (audioData) {
         const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
         audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
@@ -120,8 +124,8 @@ const DossierBriefing: React.FC<DossierBriefingProps> = ({ news, intelService })
                  <span className="text-lg font-heading font-black text-emerald-400">HQ</span>
               </div>
               <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                 <span className="text-[8px] font-mono text-slate-600 block mb-1">Voice</span>
-                 <span className="text-lg font-heading font-black text-blue-400">Kore</span>
+                 <span className="text-[8px] font-mono text-slate-600 block mb-1">Dynamics</span>
+                 <span className="text-lg font-heading font-black text-blue-400">VAR</span>
               </div>
            </div>
         </div>

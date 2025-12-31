@@ -1,24 +1,23 @@
 
-import React, { Suspense, useMemo } from 'react';
+import React, { Suspense, useMemo, useState, useEffect } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { OrbitControls, Stars, Text, Float, RoundedBox } from '@react-three/drei';
 import { NewsItem } from '../types';
 import { playUISound } from '../utils/audioUtils';
+import { isWebGLAvailable } from '../utils/webglUtils';
 
 interface SpatialLabProps {
   news: NewsItem[];
   onSelect: (url: string, title: string) => void;
 }
 
-// Fixed: Defined NewsPanelProps interface to properly handle React internal props like 'key'
 interface NewsPanelProps {
   item: NewsItem;
   position: [number, number, number];
   onSelect: (url: string, title: string) => void;
 }
 
-// Fixed: Used React.FC with NewsPanelProps to ensure the component is recognized correctly by the TypeScript JSX compiler
 const NewsPanel: React.FC<NewsPanelProps> = ({ item, position, onSelect }) => {
   const texture = useLoader(THREE.TextureLoader, item.image || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800');
   
@@ -57,7 +56,41 @@ const NewsPanel: React.FC<NewsPanelProps> = ({ item, position, onSelect }) => {
 };
 
 const SpatialLab: React.FC<SpatialLabProps> = ({ news, onSelect }) => {
+  const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setHasWebGL(isWebGLAvailable());
+  }, []);
+
   const displayNews = useMemo(() => news.slice(0, 12), [news]);
+
+  if (hasWebGL === false) {
+    return (
+      <div className="w-full h-full glass rounded-[3rem] overflow-hidden flex flex-col p-10 border border-white/10 bg-black/40 animate-in fade-in">
+        <div className="mb-10">
+          <h2 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">Spatial Intelligence Lab</h2>
+          <p className="text-[10px] font-mono text-red-400 uppercase tracking-[0.4em] mt-2 animate-pulse">Hardware Incompatibility Detected // Reverting to 2D Matrix</p>
+        </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {displayNews.map((item) => (
+            <div 
+              key={item.id} 
+              onClick={() => onSelect(item.image || '', item.title)}
+              className="glass rounded-3xl overflow-hidden border border-white/5 hover:border-accent transition-all cursor-pointer group"
+            >
+              <div className="h-32 overflow-hidden relative">
+                <img src={item.image} alt="" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                <div className="absolute inset-0 bg-accent/10"></div>
+              </div>
+              <div className="p-4 bg-slate-900/60">
+                <h4 className="text-[9px] font-heading font-black text-white uppercase leading-tight tracking-widest">{item.title}</h4>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full glass rounded-[3rem] overflow-hidden relative border border-white/10 bg-black/40">
@@ -70,7 +103,10 @@ const SpatialLab: React.FC<SpatialLabProps> = ({ news, onSelect }) => {
         Scroll to Zoom • Drag to Rotate • Click Image for VR View
       </div>
 
-      <Canvas camera={{ position: [0, 0, 15], fov: 50 }}>
+      <Canvas camera={{ position: [0, 0, 15], fov: 50 }} onCreated={({ gl }) => {
+        // Double check after creation to catch late initialization errors
+        if (!gl) setHasWebGL(false);
+      }}>
         <color attach="background" args={['#020617']} />
         
         <Suspense fallback={null}>

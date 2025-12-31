@@ -82,8 +82,8 @@ const InvestmentHub: React.FC<InvestmentHubProps> = ({ user, onInvest, activeInv
           <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em] mb-10">Capital Optimization & Geopolitical Growth</p>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-white/5 pt-8">
-            <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Assets_Under_Mgmt</span><span className="text-2xl font-heading font-black text-white">${activeInvestments.reduce((s, i) => s + i.amount, 0).toLocaleString()}</span></div>
-            <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Projected_Yield</span><span className="text-2xl font-heading font-black text-emerald-400">${activeInvestments.reduce((s, i) => s + i.expectedReturn, 0).toLocaleString()}</span></div>
+            <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Assets_Under_Mgmt</span><span className="text-2xl font-heading font-black text-white">${activeInvestments.reduce((sum, i) => sum + i.amount, 0).toLocaleString()}</span></div>
+            <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Projected_Yield</span><span className="text-2xl font-heading font-black text-emerald-400">${activeInvestments.reduce((sum, i) => sum + i.expectedReturn, 0).toLocaleString()}</span></div>
             <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Volatility_IDX</span><span className="text-2xl font-heading font-black text-amber-500">{(volatility * 10).toFixed(1)}</span></div>
             <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Network_Trust</span><span className="text-2xl font-heading font-black text-blue-400">92.4%</span></div>
           </div>
@@ -164,7 +164,7 @@ const InvestmentHub: React.FC<InvestmentHubProps> = ({ user, onInvest, activeInv
                 <div key={inv.id} className="p-6 bg-black/40 border border-white/5 rounded-3xl hover:border-accent/30 transition-all group relative">
                    <div className="flex justify-between items-start mb-3">
                       <span className="text-[8px] font-mono text-emerald-500 font-black px-2 py-0.5 bg-emerald-500/10 rounded uppercase">ACTIVE</span>
-                      <span className="text-[8px] font-mono text-slate-600">ID_{inv.id.split('-').pop()}</span>
+                      <span className="text-[8px] font-mono text-slate-600">ID_{(inv.id || '').split('-').pop()}</span>
                    </div>
                    <h5 className="text-[10px] font-heading font-black text-white uppercase mb-4 tracking-widest">{inv.sector.replace('_', ' ')}</h5>
                    <div className="flex justify-between items-end border-t border-white/5 pt-4">

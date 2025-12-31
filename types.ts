@@ -79,6 +79,7 @@ export interface CelebrityDossier {
   newsHighlights: { title: string; uri: string }[];
   biometricSummary: string;
   imageUrl?: string;
+  imageUrls?: string[];
 }
 
 export interface SentimentData {

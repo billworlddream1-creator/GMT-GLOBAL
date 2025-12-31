@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { IntelligenceReminder } from '../types';
 import { playUISound } from '../utils/audioUtils';
@@ -81,7 +82,7 @@ const ReminderTerminal: React.FC<ReminderTerminalProps> = ({ reminders, onDismis
                 <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${getSeverityStyle(rem.severity)}`}>
                   {rem.severity}
                 </span>
-                <span className="text-[8px] font-mono text-slate-600">ID_{rem.id.split('-').pop()}</span>
+                <span className="text-[8px] font-mono text-slate-600">ID_{(rem.id || '').split('-').pop()}</span>
               </div>
 
               <h4 className="text-sm font-heading font-black text-white uppercase mb-4 leading-tight line-clamp-2">
