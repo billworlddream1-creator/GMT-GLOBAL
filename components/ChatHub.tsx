@@ -17,6 +17,65 @@ interface UserPresence {
   lastSeen?: string;
 }
 
+interface ChatTheme {
+  id: string;
+  name: string;
+  icon: string;
+  accent: string;
+  bubbleUser: string;
+  bubbleOther: string;
+  sidebarBg: string;
+  mainBg: string;
+  border: string;
+}
+
+const CHAT_THEMES: ChatTheme[] = [
+  { 
+    id: 'neural', 
+    name: 'Neural Blue', 
+    icon: '🔵', 
+    accent: 'text-accent', 
+    bubbleUser: 'bg-accent text-white', 
+    bubbleOther: 'bg-white/5 text-slate-300 border-white/10',
+    sidebarBg: 'bg-slate-900/40',
+    mainBg: 'bg-slate-900/20',
+    border: 'border-white/10'
+  },
+  { 
+    id: 'phantom', 
+    name: 'Phantom Red', 
+    icon: '🔴', 
+    accent: 'text-red-500', 
+    bubbleUser: 'bg-red-600 text-white', 
+    bubbleOther: 'bg-red-950/20 text-red-100 border-red-900/30',
+    sidebarBg: 'bg-red-950/20',
+    mainBg: 'bg-black/60',
+    border: 'border-red-900/20'
+  },
+  { 
+    id: 'matrix', 
+    name: 'Matrix Green', 
+    icon: '🟢', 
+    accent: 'text-emerald-500', 
+    bubbleUser: 'bg-emerald-600 text-white font-mono', 
+    bubbleOther: 'bg-emerald-950/20 text-emerald-100 border-emerald-900/30 font-mono',
+    sidebarBg: 'bg-emerald-950/10',
+    mainBg: 'bg-black/80',
+    border: 'border-emerald-900/20'
+  },
+  { 
+    id: 'solar', 
+    name: 'Solar Flare', 
+    icon: '🟠', 
+    accent: 'text-amber-500', 
+    bubbleUser: 'bg-amber-600 text-white', 
+    bubbleOther: 'bg-amber-950/20 text-amber-100 border-amber-900/30',
+    sidebarBg: 'bg-amber-950/10',
+    mainBg: 'bg-slate-900/40',
+    border: 'border-amber-900/20'
+  }
+];
+
 const ChatHub: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', sender: 'System', text: 'End-to-end encryption active.', timestamp: '12:00', isEncrypted: true },
@@ -25,9 +84,9 @@ const ChatHub: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [activeChannel, setActiveChannel] = useState<'General' | 'Security_Ops' | 'Private_Node'>('General');
   const [relayNode, setRelayNode] = useState<string | undefined>(undefined);
+  const [currentTheme, setCurrentTheme] = useState<ChatTheme>(CHAT_THEMES[0]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Simulated user presence mapping
   const [users] = useState<UserPresence[]>([
     { name: 'You', status: 'online' },
     { name: 'Agent_Zero', status: 'online' },
@@ -51,6 +110,10 @@ const ChatHub: React.FC = () => {
     }
   }, [messages]);
 
+  const getPreciseTime = () => {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   const handleSendMessage = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputValue.trim()) return;
@@ -59,7 +122,7 @@ const ChatHub: React.FC = () => {
       id: Date.now().toString(),
       sender: 'You',
       text: inputValue,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: getPreciseTime(),
       isEncrypted: true,
       relayNode: relayNode,
     };
@@ -68,14 +131,13 @@ const ChatHub: React.FC = () => {
     setInputValue('');
     playUISound('click');
 
-    // Simulate response
     setTimeout(() => {
       const responder = activeChannel === 'General' ? 'Global_Bot' : 'Ops_Lead';
       const response: Message = {
         id: (Date.now() + 1).toString(),
         sender: responder,
         text: 'Message received via encrypted tunnel. Protocol confirmed.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: getPreciseTime(),
         isEncrypted: true,
         relayNode: relayNode
       };
@@ -87,20 +149,36 @@ const ChatHub: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto h-[75vh] flex gap-8 animate-in fade-in duration-700">
       {/* Sidebar: Channels & Users */}
-      <div className="w-64 glass rounded-[3rem] border border-white/10 flex flex-col p-8 bg-slate-900/40">
+      <div className={`w-64 glass rounded-[3rem] border ${currentTheme.border} flex flex-col p-8 ${currentTheme.sidebarBg} transition-all duration-500`}>
         <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest mb-8 pb-4 border-b border-white/5">Channels</h3>
-        <div className="space-y-3 flex-1">
+        <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar">
           {['General', 'Security_Ops', 'Private_Node'].map((ch) => (
             <button
               key={ch}
               onClick={() => { setActiveChannel(ch as any); playUISound('click'); }}
               className={`w-full text-left px-4 py-3 rounded-2xl text-[10px] font-mono transition-all border ${
-                activeChannel === ch ? 'bg-accent/20 border-accent text-white' : 'bg-white/5 border-transparent text-slate-500 hover:text-white'
+                activeChannel === ch ? `bg-white/10 ${currentTheme.border} text-white` : 'bg-white/5 border-transparent text-slate-500 hover:text-white'
               }`}
             >
               # {ch}
             </button>
           ))}
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-white/5">
+           <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-6">Interface Skin</h3>
+           <div className="grid grid-cols-4 gap-2">
+              {CHAT_THEMES.map(t => (
+                <button 
+                  key={t.id}
+                  onClick={() => { setCurrentTheme(t); playUISound('click'); }}
+                  data-tooltip={t.name}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${currentTheme.id === t.id ? 'bg-white/20 border-white/40' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
+                >
+                  {t.icon}
+                </button>
+              ))}
+           </div>
         </div>
 
         <div className="mt-8 pt-8 border-t border-white/5">
@@ -133,7 +211,7 @@ const ChatHub: React.FC = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 glass rounded-[3rem] border border-white/10 flex flex-col overflow-hidden bg-slate-900/20">
+      <div className={`flex-1 glass rounded-[3rem] border ${currentTheme.border} flex flex-col overflow-hidden ${currentTheme.mainBg} transition-all duration-500`}>
         <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/5 backdrop-blur-md">
           <div className="flex items-center gap-4">
              <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -143,7 +221,7 @@ const ChatHub: React.FC = () => {
              </div>
           </div>
           {relayNode && (
-            <span className="px-3 py-1 bg-accent/10 border border-accent/20 rounded-full text-[8px] font-mono text-accent">
+            <span className={`px-3 py-1 bg-white/5 border ${currentTheme.border} rounded-full text-[8px] font-mono ${currentTheme.accent}`}>
               RELAY_ACTIVE: {relayNode}
             </span>
           )}
@@ -165,12 +243,12 @@ const ChatHub: React.FC = () => {
                   {m.sender === 'You' && (
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
                   )}
-                  <span className="text-[8px] font-mono text-slate-700">{m.timestamp}</span>
+                  <span className="text-[8px] font-mono text-slate-500/80">[{m.timestamp}]</span>
                 </div>
-                <div className={`max-w-[80%] p-5 rounded-[2rem] text-xs font-mono leading-relaxed relative group ${
+                <div className={`max-w-[80%] p-5 rounded-[2rem] text-xs font-mono leading-relaxed relative group border ${
                   m.sender === 'You' 
-                    ? 'bg-accent text-white rounded-tr-none shadow-[0_5px_15px_rgba(var(--accent-primary-rgb),0.2)]' 
-                    : 'bg-white/5 text-slate-300 border border-white/10 rounded-tl-none'
+                    ? `${currentTheme.bubbleUser} rounded-tr-none shadow-xl border-transparent` 
+                    : `${currentTheme.bubbleOther} rounded-tl-none`
                 }`}>
                   {m.text}
                   {m.relayNode && (
@@ -188,12 +266,19 @@ const ChatHub: React.FC = () => {
           <button type="button" className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-xl hover:bg-white/10 transition-all">📎</button>
           <input 
             type="text"
+            required
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Type your encrypted message..."
-            className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 text-sm text-white focus:border-accent transition-all outline-none"
+            className={`flex-1 bg-white/5 border ${currentTheme.border} rounded-2xl px-6 text-sm text-white focus:border-accent transition-all outline-none`}
           />
-          <button type="submit" className="px-8 bg-accent text-white font-heading font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:bg-accent/80 transition-all active:scale-95">Send</button>
+          <button 
+            type="submit" 
+            disabled={!inputValue.trim()}
+            className={`px-8 ${currentTheme.bubbleUser.split(' ')[0]} text-white font-heading font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:opacity-90 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed`}
+          >
+            Send
+          </button>
         </form>
       </div>
     </div>

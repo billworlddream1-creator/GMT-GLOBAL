@@ -179,7 +179,9 @@ const GlobalPulse: React.FC<GlobalPulseProps> = ({ intelService }) => {
                  
                  {/* Center Node */}
                  <div 
-                   className="w-4 h-4 rounded-full border border-white/20 flex items-center justify-center group-hover/spot:scale-150 transition-transform relative"
+                   className={`w-4 h-4 rounded-full border border-white/20 flex items-center justify-center group-hover/spot:scale-150 transition-all relative ${
+                     selectedHotspot?.region === s.region ? 'scale-150 ring-4 ring-white shadow-[0_0_20px_white]' : ''
+                   }`}
                    style={{ backgroundColor: s.color }}
                  >
                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>

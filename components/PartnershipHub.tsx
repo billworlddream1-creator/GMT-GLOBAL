@@ -10,8 +10,8 @@ interface PartnershipHubProps {
 }
 
 const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, activePartnerships }) => {
-  const [selectedAmount, setSelectedAmount] = useState<number>(1000);
-  const [duration, setDuration] = useState<6 | 12>(6);
+  const [selectedAmount, setSelectedAmount] = useState<number>(10000);
+  const [duration, setDuration] = useState<12 | 24 | 36>(12);
   const [accumulatedYield, setAccumulatedYield] = useState(0);
   const [isSigning, setIsSigning] = useState(false);
 
@@ -21,20 +21,20 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
       .reduce((sum, p) => sum + p.amount, 0);
     if (totalActiveAmount === 0) return;
     const interval = setInterval(() => {
-      setAccumulatedYield(prev => prev + (totalActiveAmount * 0.0000002));
+      setAccumulatedYield(prev => prev + (totalActiveAmount * 0.0000005));
     }, 100);
     return () => clearInterval(interval);
   }, [activePartnerships]);
 
   const roleInfo = useMemo(() => {
-    if (selectedAmount >= 10000) return { role: 'GLOBAL_HEGEMON' as PartnerRole, bonusRoi: 15, color: 'text-red-400', border: 'border-red-500/40', desc: 'Sovereign-level influence with maximum neural priority.' };
-    if (selectedAmount >= 5000) return { role: 'NEXUS_OVERLORD' as PartnerRole, bonusRoi: 10, color: 'text-purple-400', border: 'border-purple-500/40', desc: 'Direct access to core GMT decision engines.' };
-    if (selectedAmount >= 2500) return { role: 'STRATEGIC_ASSET' as PartnerRole, bonusRoi: 5, color: 'text-amber-400', border: 'border-amber-500/40', desc: 'Priority intelligence streams and localized control.' };
-    if (selectedAmount >= 1000) return { role: 'FIELD_OPERATIVE' as PartnerRole, bonusRoi: 2, color: 'text-blue-400', border: 'border-blue-500/40', desc: 'Tactical field support and standard data dividends.' };
-    return { role: 'COVERT_ASSET' as PartnerRole, bonusRoi: 0, color: 'text-slate-400', border: 'border-slate-500/40', desc: 'Entry-level reconnaissance and passive accumulation.' };
+    if (selectedAmount >= 1000000) return { role: 'SYSTEM_OVERLORD' as PartnerRole, bonusRoi: 25, color: 'text-red-500', border: 'border-red-500/40', desc: 'Absolute dominion over network resources and priority yield.' };
+    if (selectedAmount >= 500000) return { role: 'GLOBAL_ARCHITECT' as PartnerRole, bonusRoi: 20, color: 'text-purple-400', border: 'border-purple-500/40', desc: 'Architect-level access to global data streams and infrastructure.' };
+    if (selectedAmount >= 250000) return { role: 'BOARD_MEMBER' as PartnerRole, bonusRoi: 15, color: 'text-amber-400', border: 'border-amber-500/40', desc: 'Voting rights on strategic directives and enhanced profit sharing.' };
+    if (selectedAmount >= 50000) return { role: 'STRATEGIC_ALLY' as PartnerRole, bonusRoi: 10, color: 'text-emerald-400', border: 'border-emerald-500/40', desc: 'High-level strategic cooperation with significant data dividends.' };
+    return { role: 'SHADOW_BACKER' as PartnerRole, bonusRoi: 5, color: 'text-blue-400', border: 'border-blue-500/40', desc: 'Covert funding channel establishing initial trust protocols.' };
   }, [selectedAmount]);
 
-  const calculateROI = () => (duration === 6 ? 12 : 18) + roleInfo.bonusRoi;
+  const calculateROI = () => (duration === 12 ? 15 : duration === 24 ? 25 : 35) + roleInfo.bonusRoi;
 
   const handleApply = () => {
     setIsSigning(true);
@@ -65,7 +65,7 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
         <div className="lg:col-span-3 glass p-10 rounded-[3.5rem] border border-white/10 bg-slate-900/10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent pointer-events-none"></div>
           <h3 className="text-4xl font-heading font-black text-white mb-2 uppercase tracking-tighter">Strategic_Alliances</h3>
-          <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em] mb-10">Neural Capital Deployment & Diplomatic Standing</p>
+          <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em] mb-10">High-Stakes Neural Capital Deployment</p>
           
           <div className="grid grid-cols-3 gap-10 border-t border-white/5 pt-8">
             <div>
@@ -74,11 +74,11 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
             </div>
             <div>
               <span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Neural_Dividends</span>
-              <span className="text-2xl font-heading font-black text-emerald-400">${accumulatedYield.toFixed(6)}</span>
+              <span className="text-2xl font-heading font-black text-emerald-400">${accumulatedYield.toFixed(4)}</span>
             </div>
             <div>
               <span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Handshake_Integrity</span>
-              <span className="text-2xl font-heading font-black text-blue-400">99.8%</span>
+              <span className="text-2xl font-heading font-black text-blue-400">99.9%</span>
             </div>
           </div>
         </div>
@@ -101,13 +101,13 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
             <div className="space-y-6">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Stake Magnitude (Capital Units)</label>
               <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-                {[1000, 2500, 5000, 10000, 25000].map(amt => (
+                {[10000, 50000, 250000, 500000, 1000000].map(amt => (
                   <button 
                     key={amt}
                     onClick={() => { setSelectedAmount(amt); playUISound('click'); }}
                     className={`px-4 py-4 rounded-2xl font-heading font-black text-[10px] transition-all border ${selectedAmount === amt ? 'bg-blue-600 border-blue-500 text-white shadow-xl' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}
                   >
-                    ${amt.toLocaleString()}
+                    ${(amt / 1000).toFixed(0)}K
                   </button>
                 ))}
               </div>
@@ -117,13 +117,13 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
               <div className="space-y-6">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Treaty Term</label>
                 <div className="flex gap-4">
-                  {[6, 12].map(d => (
+                  {[12, 24, 36].map(d => (
                     <button 
                       key={d}
                       onClick={() => { setDuration(d as any); playUISound('click'); }}
                       className={`flex-1 py-5 rounded-2xl font-heading font-black text-[10px] transition-all border ${duration === d ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/5 border-white/10 text-slate-500'}`}
                     >
-                      {d} MONTHS
+                      {d} MO
                     </button>
                   ))}
                 </div>
@@ -145,8 +145,8 @@ const PartnershipHub: React.FC<PartnershipHubProps> = ({ user, onPartner, active
                   <div className="flex justify-between text-[9px] font-mono text-slate-500"><span>Total Return</span><span className="text-emerald-400 font-black">${(selectedAmount * (1 + calculateROI()/100)).toLocaleString()}</span></div>
                </div>
                <div className="space-y-4">
-                  <div className="flex justify-between text-[9px] font-mono text-slate-500"><span>Handshake Delay</span><span className="text-white">0.4ms</span></div>
-                  <div className="flex justify-between text-[9px] font-mono text-slate-500"><span>Encryption Standard</span><span className="text-white">P2P_RSA_4096</span></div>
+                  <div className="flex justify-between text-[9px] font-mono text-slate-500"><span>Handshake Delay</span><span className="text-white">0.2ms</span></div>
+                  <div className="flex justify-between text-[9px] font-mono text-slate-500"><span>Encryption Standard</span><span className="text-white">QUANTUM_AES_512</span></div>
                   <div className="flex justify-between text-[9px] font-mono text-slate-500"><span>Auth Level</span><span className="text-blue-400">AUTHORIZED</span></div>
                </div>
             </div>

@@ -21,36 +21,36 @@ interface Tier {
 const TIERS: Tier[] = [
   {
     id: 'FREE',
-    title: 'CIVILIAN_ACCESS',
-    price: '$0/mo',
-    perks: ['Global News Feed', 'Standard Reports', 'Public Markets'],
+    title: 'GUEST_NODE',
+    price: 'ACCESS_GRANTED',
+    perks: ['Global News Feed', 'Standard Reports', 'Public Markets', 'Limited Neural Bandwidth'],
     color: 'border-slate-500/20',
     accent: 'text-slate-400',
-    loadCapacity: 25
+    loadCapacity: 15
   },
   {
     id: 'FIELD_AGENT',
-    title: 'TACTICAL_OPERATIVE',
-    price: '$19/mo',
-    perks: ['Intelligence Terminal', 'Shadow Recon', 'VIP Recon', 'Tech Power'],
+    title: 'FIELD_OPERATIVE',
+    price: '$49/mo',
+    perks: ['Tactical Terminal Access', 'Shadow Recon Tools', 'VIP Intelligence', 'Tech Power Augmentation'],
     color: 'border-blue-500/30',
     accent: 'text-blue-400',
-    loadCapacity: 50
+    loadCapacity: 45
   },
   {
     id: 'INTEL_DIRECTOR',
-    title: 'STRATEGIC_DIRECTOR',
-    price: '$49/mo',
-    perks: ['Satellite Scan', 'Cyber Defense', 'Spatial Lab', 'Admin Ops'],
+    title: 'SECTOR_COMMANDER',
+    price: '$199/mo',
+    perks: ['Satellite Uplink Control', 'Deep Cyber Defense', 'Holographic Spatial Lab', 'Command Ops Authorization'],
     color: 'border-emerald-500/30',
     accent: 'text-emerald-400',
-    loadCapacity: 75
+    loadCapacity: 80
   },
   {
     id: 'NEXUS_ARCHITECT',
-    title: 'SYSTEM_ARCHITECT',
-    price: '$99/mo',
-    perks: ['Deep Space Scan', 'Galaxy Navigator', 'Oracle Engine', 'Full Dominance'],
+    title: 'GLOBAL_OVERSEER',
+    price: '$999/mo',
+    perks: ['Deep Space Telemetry', 'Chrono-Intel Forecast', 'Oracle Prediction Engine', 'Total System Dominance'],
     color: 'border-purple-500/40',
     accent: 'text-purple-400',
     loadCapacity: 100
@@ -149,7 +149,7 @@ const SubscriptionHub: React.FC<SubscriptionHubProps> = ({ currentLevel, onUpgra
          <div className="space-y-4">
             {[
               { perk: 'Satellite Signal Frequency', free: '10Hz', agent: '100Hz', director: '1GHz', architect: 'Deep Link' },
-              { perk: 'Concurrent Node Connections', free: '1', agent: '5', director: '25', architect: 'Unlimited' },
+              { perk: 'Concurrent Node Connections', free: '1', agent: '10', director: '50', architect: 'Unlimited' },
               { perk: 'Data Persistence Horizon', free: '24h', agent: '30 Days', director: 'Full Archive', architect: 'Neural Store' },
               { perk: 'Search Grounding Depth', free: 'Surface', agent: 'Deep Web', director: 'Classified', architect: 'Oracle Level' }
             ].map((row, i) => (

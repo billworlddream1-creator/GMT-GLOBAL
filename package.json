@@ -1,26 +1,25 @@
+
 {
-  "name": "gmt-global:-intelligence-&-news",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "gmt-global-intel",
+  "version": "1.0.0",
+  "description": "GMT Global Intelligence Portal",
+  "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "start": "firebase emulators:start --only hosting",
+    "dev": "firebase emulators:start",
+    "deploy": "firebase deploy --only hosting",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "@google/genai": "1.34.0",
-    "recharts": "2.15.0",
-    "three": "0.170.0",
+    "@google/genai": "^1.34.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.170.0",
     "@react-three/fiber": "9.0.0-rc.0",
-    "@react-three/drei": "9.115.0"
+    "@react-three/drei": "^9.115.0",
+    "recharts": "^2.15.0"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "firebase-tools": "^13.0.0"
   }
 }

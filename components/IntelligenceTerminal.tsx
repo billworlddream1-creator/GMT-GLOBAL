@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { IntelligenceService } from '../services/geminiService';
 import { IntelligenceReport, IntelligenceSignal, DecodedSignal, VulnerabilityReport } from '../types';
 import { playUISound } from '../utils/audioUtils';
@@ -20,14 +20,8 @@ const WORLD_LANDMASSES = [
   "M-180,-80 L180,-80 L180,-90 L-180,-90 Z" // Antarctica
 ];
 
-const GALAXY_SECTORS = [
-  { id: 'SEC-ALPHA', name: 'Alpha Sector', x: -120, y: 40, size: 50 },
-  { id: 'SEC-OMEGA', name: 'Omega Rift', x: 80, y: -20, size: 70 },
-  { id: 'SEC-NEBULA', name: 'Cloud Cluster', x: -20, y: -60, size: 60 },
-  { id: 'SEC-CORE', name: 'Galactic Core', x: 0, y: 0, size: 90 },
-];
-
-const RenderSignalNode = (props: any) => {
+// Fix: Import memo from react to resolve the "Cannot find name 'memo'" error
+const RenderSignalNode = memo((props: any) => {
   const { cx, cy, fill, payload, isSelected } = props;
   if (!cx || !cy) return null;
   
@@ -69,7 +63,7 @@ const RenderSignalNode = (props: any) => {
       />
     </g>
   );
-};
+});
 
 export default function IntelligenceTerminal({ intelService }: IntelligenceTerminalProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,23 +73,18 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
   const [selectedSignal, setSelectedSignal] = useState<IntelligenceSignal | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
-  const [activeSector, setActiveSector] = useState<string>('SEC-CORE');
+  const [error, setError] = useState<{code: string, message: string} | null>(null);
 
-  // Security Scan States
   const [scanUrl, setScanUrl] = useState('');
   const [scanLoading, setScanLoading] = useState(false);
   const [scanReport, setScanReport] = useState<VulnerabilityReport | null>(null);
 
-  // Decryption States
   const [cipherInput, setCipherInput] = useState('');
   const [decryptionLoading, setDecryptionLoading] = useState(false);
   const [customDecoded, setCustomDecoded] = useState<DecodedSignal | null>(null);
 
-  // Historical Sentiment Trends
   const [historicalData, setHistoricalData] = useState<any[]>([]);
   const [trendsLoading, setTrendsLoading] = useState(false);
-
-  const seenSignalIds = useRef<Set<string>>(new Set());
 
   const fetchSignals = useCallback(async (silent = false) => {
     try {
@@ -116,15 +105,17 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
     }
   }, [intelService]);
 
-  const loadTrends = async () => {
+  const loadTrends = useCallback(async () => {
     setTrendsLoading(true);
     try {
       const { history } = await intelService.getHistoricalSentimentAnalysis();
       setHistoricalData(history);
+    } catch (e) {
+      console.error(e);
     } finally {
       setTrendsLoading(false);
     }
-  };
+  }, [intelService]);
 
   useEffect(() => {
     fetchSignals();
@@ -132,18 +123,24 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
     const interval = setInterval(() => fetchSignals(true), SYNC_INTERVAL_SECONDS * 1000);
     const pInterval = setInterval(() => setSyncProgress(prev => Math.min(100, prev + (100 / (SYNC_INTERVAL_SECONDS * 10)))), 100);
     return () => { clearInterval(interval); clearInterval(pInterval); };
-  }, [fetchSignals]);
+  }, [fetchSignals, loadTrends]);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
     setLoading(true);
+    setError(null);
     playUISound('startup');
     try {
       const dossiers = await intelService.generateIntelligenceDossiers(searchTerm);
       setReports(dossiers);
+    } catch (e: any) {
+      setError({
+        code: e.code || "DOSSIER_ACCESS_DENIED",
+        message: e.message || "Target node heavily encrypted. Re-authentication required."
+      });
+      playUISound('alert');
     } finally {
       setLoading(false);
-      playUISound('success');
     }
   };
 
@@ -155,6 +152,8 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
       const report = await intelService.performVulnerabilityScan(scanUrl);
       setScanReport(report);
       playUISound('success');
+    } catch (e) {
+      playUISound('alert');
     } finally {
       setScanLoading(false);
     }
@@ -168,6 +167,8 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
       const result = await intelService.decodeEncryptedSignal(cipherInput);
       setCustomDecoded(result);
       playUISound('success');
+    } catch (e) {
+      playUISound('alert');
     } finally {
       setDecryptionLoading(false);
     }
@@ -179,9 +180,12 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
     return [...activeData, ...ghostData];
   }, [signals, vanishingSignals]);
 
+  const handlePointClick = useCallback((e: any) => {
+    if (e && e.payload) setSelectedSignal(e.payload);
+  }, []);
+
   return (
     <div className="space-y-12 animate-in fade-in duration-700 pb-32">
-      {/* Header & Search */}
       <div className="glass p-10 rounded-[3.5rem] border border-white/20 bg-white/5 space-y-8 relative overflow-hidden backdrop-blur-md">
         <h2 className="text-4xl font-heading font-black text-white uppercase tracking-tighter leading-none">Intelligence Terminal</h2>
         <div className="flex gap-4">
@@ -197,8 +201,20 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
         </div>
       </div>
 
+      {error && (
+        <div className="glass p-8 rounded-3xl border-red-500/40 bg-red-500/5 animate-in slide-in-from-top-4 duration-500">
+           <div className="flex items-center gap-4">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                 <h4 className="text-xs font-heading font-black text-white uppercase tracking-widest">Search_Uplink_Error</h4>
+                 <p className="text-[10px] font-mono text-red-400 mt-1 uppercase">CODE: {error.code} // {error.message}</p>
+              </div>
+              <button onClick={handleSearch} className="ml-auto px-6 py-2 glass border-white/10 text-[9px] font-black uppercase hover:border-red-500 transition-all">Retry_Search</button>
+           </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Radar Map Section */}
         <div className="lg:col-span-8 glass rounded-[3.5rem] border border-white/20 p-8 h-[550px] relative overflow-hidden bg-black/40">
           <div className="absolute top-0 left-0 w-full h-1 bg-white/5 z-20">
              <div className="h-full bg-accent transition-all duration-300 shadow-[0_0_15px_var(--accent-primary)]" style={{ width: `${syncProgress}%` }}></div>
@@ -209,14 +225,13 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
                 <XAxis type="number" dataKey="x" domain={[-180, 180]} hide />
                 <YAxis type="number" dataKey="y" domain={[-90, 90]} hide />
                 <ZAxis type="number" dataKey="z" range={[150, 600]} />
-                <Scatter data={mapData} onClick={(e) => setSelectedSignal(e.payload)} shape={<RenderSignalNode isSelected={selectedSignal?.id} />} />
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                <Scatter data={mapData} onClick={handlePointClick} shape={<RenderSignalNode isSelected={selectedSignal?.id} />} />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
-          <div className="absolute bottom-6 left-6 text-[8px] font-mono text-slate-500 uppercase">Status: Orbital Uplink Active // Ref: {Math.random().toString(16).substr(2,6).toUpperCase()}</div>
         </div>
 
-        {/* Info & Decrypter Section */}
         <div className="lg:col-span-4 flex flex-col gap-8">
           <div className="glass p-8 rounded-[3rem] border border-white/10 bg-slate-900/40 flex-1 flex flex-col">
             <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest border-b border-white/5 pb-4 mb-6">Signal Details</h3>
@@ -237,113 +252,9 @@ export default function IntelligenceTerminal({ intelService }: IntelligenceTermi
               )}
             </div>
           </div>
-
-          <div className="glass p-8 rounded-[3rem] border border-white/10 bg-slate-900/40">
-            <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest mb-4">Manual Decrypter</h3>
-            <div className="space-y-4">
-              <textarea 
-                value={cipherInput}
-                onChange={(e) => setCipherInput(e.target.value)}
-                placeholder="Paste encrypted string..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-[10px] font-mono text-white h-24 outline-none resize-none"
-              />
-              <button 
-                onClick={handleManualDecryption} 
-                disabled={decryptionLoading} 
-                className="w-full py-3 bg-accent text-white font-heading font-black text-[9px] uppercase tracking-widest rounded-xl shadow-lg"
-              >
-                {decryptionLoading ? 'Decoding...' : 'Unlock Protocol'}
-              </button>
-              {customDecoded && (
-                <div className="mt-4 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 animate-in fade-in">
-                  <p className="text-[10px] font-mono text-emerald-400 italic">"{customDecoded.decrypted}"</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
-
-      {/* Security Probe & Trends Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="glass p-10 rounded-[3.5rem] border border-red-500/20 bg-red-500/5 space-y-8">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-heading font-black text-white uppercase">Tactical Security Probe</h3>
-            <span className="text-[8px] font-mono text-red-500 font-black animate-pulse">RECON_MODE</span>
-          </div>
-          <div className="flex gap-4">
-            <input 
-              type="text" 
-              value={scanUrl}
-              onChange={(e) => setScanUrl(e.target.value)}
-              placeholder="Target URL (e.g. security.net)..."
-              className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-red-500 outline-none transition-all font-mono"
-            />
-            <button 
-              onClick={executeSecurityScan}
-              disabled={scanLoading}
-              className="px-8 py-4 bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase rounded-2xl transition-all"
-            >
-              {scanLoading ? 'Probing...' : 'Probe Target'}
-            </button>
-          </div>
-          {scanReport && (
-            <div className="space-y-6 animate-in slide-in-from-top-4">
-               <div className="flex justify-between items-center text-[10px] font-mono">
-                  <span className="text-slate-500">Security Index:</span>
-                  <span className={scanReport.score < 50 ? 'text-red-500 font-black' : 'text-emerald-500 font-black'}>{scanReport.score}/100</span>
-               </div>
-               <div className="space-y-3">
-                  {scanReport.threats.slice(0, 3).map((t, i) => (
-                    <div key={i} className="p-4 bg-black/20 border border-white/5 rounded-2xl">
-                       <div className="flex justify-between items-center mb-1">
-                          <span className="text-[9px] font-black text-white">{t.type}</span>
-                          <span className="text-[8px] text-red-400 font-mono">{t.severity}</span>
-                       </div>
-                       <p className="text-[9px] font-mono text-slate-500 italic">{t.description}</p>
-                    </div>
-                  ))}
-               </div>
-            </div>
-          )}
-        </div>
-
-        <div className="glass p-10 rounded-[3.5rem] border border-blue-500/20 bg-blue-500/5 space-y-8">
-           <h3 className="text-xl font-heading font-black text-white uppercase">Geopolitical Trends</h3>
-           <div className="h-64 w-full">
-             <ResponsiveContainer width="100%" height="100%">
-               <LineChart data={historicalData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="hour" stroke="rgba(255,255,255,0.3)" fontSize={9} hide />
-                  <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" fontSize={9} hide />
-                  <Tooltip contentStyle={{ backgroundColor: '#020617', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#fff' }} />
-                  <Line type="monotone" dataKey="Eurasia" stroke="#3b82f6" strokeWidth={3} dot={false} />
-                  <Line type="monotone" dataKey="Africa" stroke="#f59e0b" strokeWidth={3} dot={false} />
-               </LineChart>
-             </ResponsiveContainer>
-           </div>
-           <p className="text-[9px] font-mono text-slate-500 uppercase tracking-widest text-center">Stability Projections // 24H Forecast Nodes</p>
-        </div>
-      </div>
-
-      {/* Dossiers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {reports.map((report, idx) => (
-          <div key={idx} className="glass p-12 rounded-[3.5rem] border border-white/20 bg-white/5 relative overflow-hidden flex flex-col space-y-6">
-            <h3 className="text-2xl font-heading font-black text-white uppercase leading-tight">{report.title}</h3>
-            <p className="text-xs text-slate-400 font-mono leading-relaxed bg-black/20 p-6 rounded-3xl">{report.summary}</p>
-            <div className="space-y-3">
-              {report.keyInsights.slice(0, 3).map((insight, i) => (
-                <div key={i} className="flex gap-4 text-[10px] font-mono text-slate-300">
-                  <span className="text-accent font-black">{i+1}.</span>
-                  <span>{insight}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
+      
       <style>{`
         @keyframes signal-pulse-outer {
           0% { transform: scale(1); opacity: 0.6; stroke-width: 2; }

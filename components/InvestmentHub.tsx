@@ -11,17 +11,17 @@ interface InvestmentHubProps {
 }
 
 const SECTORS: { id: InvestmentSector, label: string, icon: string, risk: 'LOW' | 'MODERATE' | 'SPECULATIVE', baseRoi: number, desc: string }[] = [
-  { id: 'CYBER_DEFENSE', label: 'Internet Security', icon: '🛡️', risk: 'LOW', baseRoi: 8, desc: 'Critical infrastructure hardening. Low risk, consistent dividends.' },
-  { id: 'ORBITAL_TECH', label: 'Satellite Tech', icon: '📡', risk: 'MODERATE', baseRoi: 15, desc: 'Orbital communication array expansion. Moderate market movement.' },
-  { id: 'DEEP_SPACE', label: 'Space Exploring', icon: '🌌', risk: 'SPECULATIVE', baseRoi: 35, desc: 'High-risk deep-space resource harvesting. High reward.' },
-  { id: 'NEURAL_RESEARCH', label: 'AI Science', icon: '🧠', risk: 'MODERATE', baseRoi: 22, desc: 'Advanced neural network engineering. High growth potential.' },
-  { id: 'GLOBAL_LOGISTICS', label: 'World Shipping', icon: '📦', risk: 'LOW', baseRoi: 10, desc: 'Secure supply chain management for tactical goods.' }
+  { id: 'QUANTUM_COMPUTING', label: 'Quantum Computing', icon: '💻', risk: 'MODERATE', baseRoi: 18, desc: 'Next-gen processing infrastructure. High growth, stable long-term yields.' },
+  { id: 'FUSION_ENERGY', label: 'Fusion Energy', icon: '⚛️', risk: 'LOW', baseRoi: 12, desc: 'Clean, limitless power generation. Secure, government-backed dividends.' },
+  { id: 'OFF_WORLD_MINING', label: 'Off-World Mining', icon: '☄️', risk: 'SPECULATIVE', baseRoi: 45, desc: 'High-risk asteroid resource harvesting. Explosive potential returns.' },
+  { id: 'NEURAL_NETWORKS', label: 'Neural Networks', icon: '🧠', risk: 'MODERATE', baseRoi: 25, desc: 'Advanced AI integration grid. Rapidly expanding market sector.' },
+  { id: 'BIO_SYNTHESIS', label: 'Bio-Synthesis', icon: '🧬', risk: 'LOW', baseRoi: 15, desc: 'Synthetic biology and medical augmentation. Consistent demand.' }
 ];
 
 const InvestmentHub: React.FC<InvestmentHubProps> = ({ user, onInvest, activeInvestments }) => {
-  const [selectedSector, setSelectedSector] = useState<InvestmentSector>('CYBER_DEFENSE');
-  const [amount, setAmount] = useState<number>(500);
-  const [duration, setDuration] = useState<3 | 6 | 12>(6);
+  const [selectedSector, setSelectedSector] = useState<InvestmentSector>('QUANTUM_COMPUTING');
+  const [amount, setAmount] = useState<number>(5000);
+  const [duration, setDuration] = useState<6 | 12 | 24>(12);
   const [isDeploying, setIsDeploying] = useState(false);
   const [volatility, setVolatility] = useState(0.5);
   const [marketAdvice, setMarketAdvice] = useState('Syncing neural market data...');
@@ -45,7 +45,7 @@ const InvestmentHub: React.FC<InvestmentHubProps> = ({ user, onInvest, activeInv
   const currentSector = useMemo(() => SECTORS.find(s => s.id === selectedSector)!, [selectedSector]);
   
   const estimatedReturn = useMemo(() => {
-    const durationMultiplier = duration === 12 ? 1.5 : duration === 6 ? 1.2 : 1.0;
+    const durationMultiplier = duration === 24 ? 1.8 : duration === 12 ? 1.4 : 1.0;
     const volatilityImpact = 1 + (volatility - 0.5) * (currentSector.risk === 'SPECULATIVE' ? 0.5 : 0.1);
     const roiPercent = currentSector.baseRoi * durationMultiplier * volatilityImpact;
     return Math.round(amount * (roiPercent / 100));
@@ -85,7 +85,7 @@ const InvestmentHub: React.FC<InvestmentHubProps> = ({ user, onInvest, activeInv
             <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Assets_Under_Mgmt</span><span className="text-2xl font-heading font-black text-white">${activeInvestments.reduce((sum, i) => sum + i.amount, 0).toLocaleString()}</span></div>
             <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Projected_Yield</span><span className="text-2xl font-heading font-black text-emerald-400">${activeInvestments.reduce((sum, i) => sum + i.expectedReturn, 0).toLocaleString()}</span></div>
             <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Volatility_IDX</span><span className="text-2xl font-heading font-black text-amber-500">{(volatility * 10).toFixed(1)}</span></div>
-            <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Network_Trust</span><span className="text-2xl font-heading font-black text-blue-400">92.4%</span></div>
+            <div><span className="text-[9px] font-mono text-slate-500 uppercase block mb-1">Network_Trust</span><span className="text-2xl font-heading font-black text-blue-400">98.2%</span></div>
           </div>
         </div>
 
@@ -123,15 +123,15 @@ const InvestmentHub: React.FC<InvestmentHubProps> = ({ user, onInvest, activeInv
              <div className="space-y-6">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Investment Magnitude</label>
                 <div className="grid grid-cols-3 gap-3">
-                   {[500, 1000, 2500, 5000, 10000, 50000].map(amt => (
-                     <button key={amt} onClick={() => setAmount(amt)} className={`py-3 rounded-xl font-mono text-[10px] border transition-all ${amount === amt ? 'bg-accent border-accent text-white' : 'bg-white/5 border-white/10 text-slate-500'}`}>${amt.toLocaleString()}</button>
+                   {[1000, 5000, 10000, 25000, 50000, 100000].map(amt => (
+                     <button key={amt} onClick={() => setAmount(amt)} className={`py-3 rounded-xl font-mono text-[10px] border transition-all ${amount === amt ? 'bg-accent border-accent text-white' : 'bg-white/5 border-white/10 text-slate-500'}`}>${(amt/1000).toFixed(0)}K</button>
                    ))}
                 </div>
              </div>
              <div className="space-y-6">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Commitment Horizon</label>
                 <div className="grid grid-cols-3 gap-3">
-                   {[3, 6, 12].map(m => (
+                   {[6, 12, 24].map(m => (
                      <button key={m} onClick={() => setDuration(m as any)} className={`py-3 rounded-xl font-mono text-[10px] border transition-all ${duration === m ? 'bg-accent border-accent text-white' : 'bg-white/5 border-white/10 text-slate-500'}`}>{m} MO</button>
                    ))}
                 </div>

@@ -1,6 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-// Fix: Removed non-existent SocialIntercept import from services/geminiService
+import React, { useState } from 'react';
 import { IntelligenceService } from '../services/geminiService';
 import { DecodedSignal } from '../types';
 import { playUISound } from '../utils/audioUtils';
@@ -14,7 +13,6 @@ const SnickRecon: React.FC<SnickReconProps> = ({ intelService }) => {
   const [cipher, setCipher] = useState('');
   const [decoded, setDecoded] = useState<DecodedSignal | null>(null);
   const [isDecoding, setIsDecoding] = useState(false);
-  const [jammerActive, setJammerActive] = useState(false);
 
   const handleDecode = async () => {
     if (!cipher.trim()) return;
@@ -24,6 +22,8 @@ const SnickRecon: React.FC<SnickReconProps> = ({ intelService }) => {
       const result = await intelService.decodeEncryptedSignal(cipher);
       setDecoded(result);
       playUISound('success');
+    } catch (err) {
+      console.error("Decoding failure", err);
     } finally {
       setIsDecoding(false);
     }
@@ -42,7 +42,7 @@ const SnickRecon: React.FC<SnickReconProps> = ({ intelService }) => {
            {(['VISUAL', 'RADIO', 'DECODER'] as const).map(m => (
              <button 
                key={m}
-               onClick={() => setReconMode(m)}
+               onClick={() => { setReconMode(m); playUISound('click'); }}
                className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${reconMode === m ? 'bg-accent text-white shadow-accent' : 'text-slate-500 hover:text-slate-300'}`}
              >
                {m}

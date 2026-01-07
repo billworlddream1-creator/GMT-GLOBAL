@@ -23,7 +23,7 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
       const nextMonthlyCount = user.connections.monthlyConnections + 1;
       const nextTotalCount = user.connections.totalConnections + 1;
       
-      const newlyEligible = nextMonthlyCount % 100 === 0 && nextMonthlyCount > 0;
+      const newlyEligible = nextMonthlyCount % 50 === 0 && nextMonthlyCount > 0;
 
       setUser({
         ...user,
@@ -31,7 +31,7 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
           ...user.connections,
           totalConnections: nextTotalCount,
           monthlyConnections: nextMonthlyCount,
-          referralRewardEligible: nextMonthlyCount >= 100
+          referralRewardEligible: nextMonthlyCount >= 50
         }
       });
 
@@ -41,17 +41,16 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
 
       if (newlyEligible) {
         playUISound('share');
-        const tier = nextMonthlyCount / 100;
-        alert(`CRITICAL MILESTONE: Tier ${tier} established. Your monthly stipend has been increased by $10.00. Total recurring yield: $${tier * 10}.00/mo.`);
+        const tier = nextMonthlyCount / 50;
+        alert(`CRITICAL MILESTONE: Tier ${tier} established. Your monthly stipend has been increased by $50.00. Total recurring yield: $${tier * 50}.00/mo.`);
       }
     }, 800);
   };
 
-  const currentTier = useMemo(() => Math.floor(user.connections.monthlyConnections / 100), [user.connections.monthlyConnections]);
-  const progressInCurrentTier = useMemo(() => user.connections.monthlyConnections % 100, [user.connections.monthlyConnections]);
-  const monthlyStipend = useMemo(() => currentTier * 10, [currentTier]);
-  const nextMilestone = useMemo(() => (currentTier + 1) * 100, [currentTier]);
-
+  const currentTier = useMemo(() => Math.floor(user.connections.monthlyConnections / 50), [user.connections.monthlyConnections]);
+  const progressInCurrentTier = useMemo(() => user.connections.monthlyConnections % 50, [user.connections.monthlyConnections]);
+  const monthlyStipend = useMemo(() => currentTier * 50, [currentTier]);
+  
   return (
     <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-700 pb-20">
       <div className="glass p-12 rounded-[4rem] border border-white/10 relative overflow-hidden bg-slate-900/40">
@@ -63,8 +62,8 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
           <div className="flex-1 space-y-6">
             <h3 className="text-4xl font-heading font-black text-white tracking-tighter uppercase leading-none">Nexus_Expansion_Protocol</h3>
             <p className="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] leading-relaxed max-w-lg">
-              Earn <span className="text-accent font-black">$10.00 USD per month</span> for every 100 active neural connections established. 
-              Each additional block of 100 users compounds your monthly stipend indefinitely.
+              Earn <span className="text-accent font-black">$50.00 USD per month</span> for every 50 active neural connections established. 
+              Each additional block of 50 users compounds your monthly stipend indefinitely.
             </p>
 
             <div className="pt-6 space-y-6">
@@ -100,16 +99,16 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
                 <div className="space-y-3">
                    <div className="flex justify-between text-[9px] font-mono text-slate-500 uppercase">
                       <span>Tier_{currentTier + 1}_Progress</span>
-                      <span className="text-white">{progressInCurrentTier}/100</span>
+                      <span className="text-white">{progressInCurrentTier}/50</span>
                    </div>
                    <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
                       <div 
                         className="h-full bg-gradient-to-r from-accent to-emerald-400 transition-all duration-1000 shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.5)]" 
-                        style={{ width: `${progressInCurrentTier}%` }}
+                        style={{ width: `${(progressInCurrentTier / 50) * 100}%` }}
                       ></div>
                    </div>
                    <p className="text-[8px] font-mono text-slate-600 text-center uppercase tracking-widest">
-                     Target 100 connections to increase stipend by +$10.00/mo
+                     Target 50 connections to increase stipend by +$50.00/mo
                    </p>
                 </div>
              </div>
@@ -147,7 +146,7 @@ const NexusLink: React.FC<NexusLinkProps> = ({ user, setUser }) => {
             <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-xl text-blue-400 border border-blue-500/20">📈</div>
             <div>
                <h4 className="text-[10px] font-black text-white uppercase mb-2 tracking-widest">Compounding Rewards</h4>
-               <p className="text-[9px] font-mono text-slate-500 leading-relaxed uppercase tracking-wider">Your monthly income scales linearly with your network size. Every 100 verified users is a permanent $10.00/month addition to your tactical funding.</p>
+               <p className="text-[9px] font-mono text-slate-500 leading-relaxed uppercase tracking-wider">Your monthly income scales linearly with your network size. Every 50 verified users is a permanent $50.00/month addition to your tactical funding.</p>
             </div>
          </div>
          <div className="glass p-8 rounded-[2.5rem] border border-white/5 flex items-start gap-6 bg-white/5">

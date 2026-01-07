@@ -1,4 +1,16 @@
 
+let sharedAudioCtx: AudioContext | null = null;
+
+export const getSharedAudioContext = (sampleRate: number = 24000): AudioContext => {
+  if (!sharedAudioCtx) {
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    sharedAudioCtx = new AudioContextClass({ sampleRate });
+  } else if (sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume();
+  }
+  return sharedAudioCtx;
+};
+
 export const playVocalFeedback = (type: 'click' | 'success' | 'alert' | 'startup') => {
   if (!('speechSynthesis' in window)) return;
 
@@ -6,7 +18,7 @@ export const playVocalFeedback = (type: 'click' | 'success' | 'alert' | 'startup
     click: ['Acknowledged', 'Confirmed', 'Accessing', 'Processing', 'Node Fixed'],
     success: ['Uplink Stable', 'Sync Complete', 'Data Secured', 'Encryption Active'],
     alert: ['Warning', 'Signal Loss', 'Threat Detected', 'Unauthorized'],
-    startup: ['GMT Global Online', 'Neural Handshake Initialized', 'OS Loading']
+    startup: ['GMT Global Intel Online', 'Neural Handshake Initialized', 'OS Loading']
   };
 
   const synth = window.speechSynthesis;
@@ -15,40 +27,26 @@ export const playVocalFeedback = (type: 'click' | 'success' | 'alert' | 'startup
   
   const utterance = new SpeechSynthesisUtterance(text);
   const voices = synth.getVoices();
-  
-  // Filter for English voices
   const enVoices = voices.filter(v => v.lang.startsWith('en'));
   
   if (enVoices.length > 0) {
-    // Randomly pick a voice from the system
     utterance.voice = enVoices[Math.floor(Math.random() * enVoices.length)];
   }
 
-  // Randomize pitch/rate to simulate different male/female personas
-  // 0.7-0.9 pitch roughly simulates deeper male tones, 1.1-1.4 simulates higher female tones
   const isAltPersona = Math.random() > 0.5;
   utterance.pitch = isAltPersona ? 0.75 : 1.25;
   utterance.rate = 1.2;
-  utterance.volume = 0.5;
+  utterance.volume = 0.4; // Lower volume for less intrusive feedback
 
-  synth.cancel(); // Stop current speech to avoid stacking
+  synth.cancel(); 
   synth.speak(utterance);
 };
 
-/**
- * Triggered by UI interactions. 
- * Oscillator-based sounds have been removed per request, 
- * leaving only randomized vocal feedback.
- */
 export const playUISound = (type: 'click' | 'hover' | 'alert' | 'startup' | 'success' | 'share') => {
-  // We only trigger vocal feedback for significant interactions
   if (type === 'click' || type === 'alert' || type === 'success' || type === 'startup' || type === 'share') {
-    // Mapping 'share' to 'success' vocal pool
     const feedbackType = type === 'share' ? 'success' : type as 'click' | 'success' | 'alert' | 'startup';
     playVocalFeedback(feedbackType);
   }
-  
-  // Synthetic beep logic removed to leave only male/female voices
 };
 
 export function decode(base64: string) {
