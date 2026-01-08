@@ -3,16 +3,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { playUISound, decode, decodeAudioData, encode, getSharedAudioContext } from '../utils/audioUtils';
 import { NewsItem } from '../types';
+import FeatureOnboarding from './FeatureOnboarding';
 
 interface NeuralAudioLinkProps {
   news?: NewsItem[];
+  logActivity?: (action: string, module: string) => void;
 }
 
-const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
+const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [], logActivity }) => {
   const [isActive, setIsActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [transcript, setTranscript] = useState<string[]>([]);
   const [rms, setRms] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const nextStartTimeRef = useRef(0);
   const sourcesRef = useRef(new Set<AudioBufferSourceNode>());
@@ -21,6 +24,18 @@ const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
 
   const latestNews = news.length > 0 ? news[0] : null;
+
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('gmt_tutorial_audio');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  }, []);
+
+  const completeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('gmt_tutorial_audio', 'true');
+  };
 
   const stopSession = () => {
     setIsActive(false);
@@ -48,11 +63,13 @@ const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
     nextStartTimeRef.current = 0;
     
     playUISound('alert');
+    logActivity?.('TERMINATED_VOICE_UPLINK', 'NEURAL_LINK');
   };
 
   const startSession = async () => {
     setIsConnecting(true);
     playUISound('startup');
+    logActivity?.('INITIATING_VOICE_HANDSHAKE', 'NEURAL_LINK');
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -63,19 +80,19 @@ const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
       const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
 
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
           onopen: () => {
             setIsActive(true);
             setIsConnecting(false);
             playUISound('success');
+            logActivity?.('VOICE_UPLINK_ESTABLISHED', 'NEURAL_LINK');
 
             const source = inputAudioContext.createMediaStreamSource(stream);
             const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
             
             scriptProcessor.onaudioprocess = (e) => {
-              if (!sessionRef.current) return;
               const inputData = e.inputBuffer.getChannelData(0);
               let sum = 0;
               for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
@@ -90,7 +107,9 @@ const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
                 mimeType: 'audio/pcm;rate=16000',
               };
 
-              sessionRef.current.sendRealtimeInput({ media: pcmBlob });
+              sessionPromise.then((session) => {
+                session.sendRealtimeInput({ media: pcmBlob });
+              });
             };
 
             source.connect(scriptProcessor);
@@ -121,7 +140,8 @@ const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
             }
 
             if (message.serverContent?.outputTranscription) {
-              setTranscript(prev => [...prev.slice(-4), `AI: ${message.serverContent?.outputTranscription?.text}`]);
+              const text = message.serverContent?.outputTranscription?.text;
+              setTranscript(prev => [...prev.slice(-4), `AI: ${text}`]);
             }
           },
           onerror: (e) => {
@@ -154,6 +174,8 @@ const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
     }
     playUISound('click');
     setTranscript(prev => [...prev, `SYSTEM: Requesting synthesis for ${latestNews.title}`]);
+    logActivity?.(`REQUESTED_SYNTHESIS: ${latestNews.id}`, 'NEURAL_LINK');
+    
     sessionRef.current.sendRealtimeInput({
       text: `Please read and summarize this intelligence report for me: Title: ${latestNews.title}. Content: ${latestNews.content}. Provide a tactical summary.`
     });
@@ -166,7 +188,9 @@ const NeuralAudioLink: React.FC<NeuralAudioLinkProps> = ({ news = [] }) => {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto py-12 animate-in fade-in duration-700">
+    <div className="max-w-4xl mx-auto py-12 animate-in fade-in duration-700 relative">
+      {showTutorial && <FeatureOnboarding featureType="AUDIO" onComplete={completeTutorial} />}
+      
       <div className="glass p-12 rounded-[4rem] border border-white/10 bg-slate-900/40 relative overflow-hidden flex flex-col items-center text-center">
         <h2 className="text-4xl font-heading font-black text-white uppercase tracking-tighter mb-4">Neural_Audio_Link</h2>
         <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mb-12">Authorized Real-Time Voice Intelligence Bridge</p>

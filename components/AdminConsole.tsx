@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Investment, PaymentSettings, Partnership } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Investment, PaymentSettings, Partnership, ActivityLog, SystemConfig, ModuleConfig } from '../types';
 import { playUISound } from '../utils/audioUtils';
 
 interface AdminConsoleProps {
@@ -10,14 +10,25 @@ interface AdminConsoleProps {
   setInvestments: (i: Investment[]) => void;
   partnerships: Partnership[];
   setPartnerships: (p: Partnership[]) => void;
+  activityLogs: ActivityLog[];
+  systemConfig: SystemConfig;
+  updateSystemConfig: (config: Partial<SystemConfig>) => void;
 }
 
 const AdminConsole: React.FC<AdminConsoleProps> = ({ 
   paymentSettings, setPaymentSettings, 
   investments, setInvestments,
-  partnerships, setPartnerships
+  partnerships, setPartnerships,
+  activityLogs, systemConfig, updateSystemConfig
 }) => {
-  const [activeTab, setActiveTab] = useState<'investments' | 'partnerships' | 'settings'>('investments');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'system' | 'investments' | 'partnerships' | 'settings'>('monitor');
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab === 'monitor' && logContainerRef.current) {
+      logContainerRef.current.scrollTop = 0;
+    }
+  }, [activityLogs, activeTab]);
 
   const handleAction = (id: string, type: 'invest' | 'partner', status: string) => {
     if (type === 'invest') {
@@ -34,28 +45,141 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
     }
   };
 
+  const toggleLockdown = () => {
+    playUISound('alert');
+    updateSystemConfig({ maintenanceMode: !systemConfig.maintenanceMode });
+  };
+
+  const setDefcon = (level: 1 | 2 | 3 | 4 | 5) => {
+    playUISound('click');
+    updateSystemConfig({ defconLevel: level });
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-20">
       <div className="flex space-x-4 border-b border-white/5 pb-6 overflow-x-auto no-scrollbar">
-        <button 
-          onClick={() => setActiveTab('investments')}
-          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'investments' ? 'bg-accent text-white shadow-[0_0_15px_var(--accent-glow)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
-        >
-          Investment Portfolio
-        </button>
-        <button 
-          onClick={() => setActiveTab('partnerships')}
-          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'partnerships' ? 'bg-accent text-white shadow-[0_0_15px_var(--accent-glow)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
-        >
-          Partner Agreements
-        </button>
-        <button 
-          onClick={() => setActiveTab('settings')}
-          className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-accent text-white shadow-[0_0_15px_var(--accent-glow)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
-        >
-          Global Configuration
-        </button>
+        {[
+          { id: 'monitor', label: 'Live Monitor' },
+          { id: 'system', label: 'System Control' },
+          { id: 'investments', label: 'Investments' },
+          { id: 'partnerships', label: 'Partnerships' },
+          { id: 'settings', label: 'Global Config' }
+        ].map(tab => (
+          <button 
+            key={tab.id}
+            onClick={() => { setActiveTab(tab.id as any); playUISound('click'); }}
+            className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-accent text-white shadow-[0_0_15px_var(--accent-glow)]' : 'glass border border-white/5 text-slate-500 hover:text-slate-300'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {activeTab === 'monitor' && (
+        <div className="glass p-8 rounded-3xl border border-white/5 h-[600px] flex flex-col bg-slate-900/60">
+           <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-heading font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                 Agent_Activity_Stream
+              </h3>
+              <span className="text-[9px] font-mono text-slate-500">{activityLogs.length} EVENTS LOGGED</span>
+           </div>
+           
+           <div ref={logContainerRef} className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-2">
+              {activityLogs.map(log => (
+                <div key={log.id} className="flex items-center gap-4 p-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-mono animate-in slide-in-from-top-2">
+                   <span className="text-slate-500 w-20">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                   <span className="text-accent font-bold w-24 truncate">{log.agentId}</span>
+                   <span className="text-white flex-1">{log.action}</span>
+                   <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
+                     log.severity === 'CRITICAL' ? 'bg-red-500 text-white' : 
+                     log.severity === 'WARN' ? 'bg-amber-500 text-black' : 'bg-blue-500/20 text-blue-400'
+                   }`}>
+                     {log.module}
+                   </span>
+                </div>
+              ))}
+              {activityLogs.length === 0 && (
+                <div className="text-center py-20 opacity-30 text-xs font-mono uppercase">Awaiting Network Traffic...</div>
+              )}
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'system' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="glass p-8 rounded-3xl border border-white/5 bg-slate-900/60 space-y-8">
+              <h3 className="text-xl font-heading font-black text-white uppercase tracking-tighter">Threat_Condition_Level</h3>
+              <div className="flex gap-2">
+                 {[5, 4, 3, 2, 1].map((level) => (
+                   <button 
+                     key={level}
+                     onClick={() => setDefcon(level as any)}
+                     className={`flex-1 py-6 rounded-2xl font-black text-xl border transition-all ${
+                       systemConfig.defconLevel === level 
+                         ? level === 1 ? 'bg-white text-black border-white shadow-[0_0_30px_white]' 
+                         : level === 2 ? 'bg-red-600 text-white border-red-500 shadow-[0_0_30px_red]' 
+                         : level === 3 ? 'bg-amber-500 text-black border-amber-400' 
+                         : 'bg-blue-600 text-white border-blue-500'
+                         : 'bg-white/5 border-white/10 text-slate-600 hover:bg-white/10'
+                     }`}
+                   >
+                     {level}
+                   </button>
+                 ))}
+              </div>
+              <div className="p-4 bg-black/40 rounded-2xl border border-white/5 text-center">
+                 <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest block mb-2">Current Protocol</span>
+                 <p className="text-xs font-heading font-black text-white uppercase">
+                    {systemConfig.defconLevel === 1 ? 'MAXIMUM READINESS / NUCLEAR AUTH' : 
+                     systemConfig.defconLevel === 2 ? 'HOSTILE ACTIVITY CONFIRMED' :
+                     systemConfig.defconLevel === 3 ? 'ELEVATED FORCE READINESS' :
+                     systemConfig.defconLevel === 4 ? 'DOUBLE INTELLIGENCE WATCH' : 'STANDARD PEACETIME OPS'}
+                 </p>
+              </div>
+           </div>
+
+           <div className="glass p-8 rounded-3xl border border-white/5 bg-slate-900/60 space-y-8">
+              <h3 className="text-xl font-heading font-black text-white uppercase tracking-tighter">App_Control_Override</h3>
+              
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                 <div>
+                    <h4 className="text-sm font-bold text-white">Maintenance Lockdown</h4>
+                    <p className="text-[9px] font-mono text-slate-500 uppercase">Suspend all non-admin sessions</p>
+                 </div>
+                 <button 
+                   onClick={toggleLockdown}
+                   className={`w-14 h-8 rounded-full p-1 transition-all ${systemConfig.maintenanceMode ? 'bg-red-500' : 'bg-slate-700'}`}
+                 >
+                    <div className={`w-6 h-6 rounded-full bg-white shadow-lg transition-all ${systemConfig.maintenanceMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                 </button>
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Broadcast Global Alert</label>
+                 <div className="flex gap-2">
+                    <input 
+                      placeholder="Type alert message..."
+                      className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:border-accent outline-none"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                           updateSystemConfig({ globalAlert: (e.target as HTMLInputElement).value });
+                           (e.target as HTMLInputElement).value = '';
+                           playUISound('success');
+                        }
+                      }}
+                    />
+                    <button 
+                      onClick={() => updateSystemConfig({ globalAlert: null })}
+                      className="px-4 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase hover:bg-white/10"
+                    >
+                      Clear
+                    </button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       {(activeTab === 'investments' || activeTab === 'partnerships') && (
         <div className="glass p-8 rounded-3xl border border-white/5 space-y-6">

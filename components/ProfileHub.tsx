@@ -36,7 +36,10 @@ const ProfileHub: React.FC<ProfileHubProps> = ({ user, setUser }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(user.notificationSettings?.enabled ?? false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(user.notificationSettings?.categories ?? []);
+  const [preferredCategories, setPreferredCategories] = useState<string[]>(user.newsPreferences?.categories ?? []);
+  const [blockedSources, setBlockedSources] = useState<string[]>(user.newsPreferences?.blockedSources ?? []);
+  const [newBlockedSource, setNewBlockedSource] = useState('');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpdate = () => {
@@ -55,9 +58,13 @@ const ProfileHub: React.FC<ProfileHubProps> = ({ user, setUser }) => {
         clearanceLevel: clearance,
         securityClearance: secClearance,
         operationalStatus: status,
+        newsPreferences: {
+          categories: preferredCategories,
+          blockedSources: blockedSources
+        },
         notificationSettings: {
           enabled: notifEnabled,
-          categories: selectedCategories
+          categories: user.notificationSettings?.categories || []
         }
       });
       
@@ -101,9 +108,22 @@ const ProfileHub: React.FC<ProfileHubProps> = ({ user, setUser }) => {
 
   const toggleCategory = (cat: string) => {
     playUISound('click');
-    setSelectedCategories(prev => 
+    setPreferredCategories(prev => 
       prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
     );
+  };
+
+  const addBlockedSource = () => {
+    if (newBlockedSource.trim() && !blockedSources.includes(newBlockedSource.trim())) {
+      setBlockedSources(prev => [...prev, newBlockedSource.trim()]);
+      setNewBlockedSource('');
+      playUISound('click');
+    }
+  };
+
+  const removeBlockedSource = (src: string) => {
+    setBlockedSources(prev => prev.filter(s => s !== src));
+    playUISound('click');
   };
 
   return (
@@ -265,26 +285,55 @@ const ProfileHub: React.FC<ProfileHubProps> = ({ user, setUser }) => {
         </div>
       </div>
 
-      {/* Notification Protocols Section */}
+      {/* Feed Configuration Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
          <div className="lg:col-span-8 glass p-12 rounded-[4rem] border border-white/10 bg-slate-900/60 relative overflow-hidden">
-            <h3 className="text-3xl font-heading font-black text-white uppercase tracking-tighter mb-8">Notification_Protocols</h3>
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em] mb-10">Configure Tactical Signal Intercepts</p>
+            <h3 className="text-3xl font-heading font-black text-white uppercase tracking-tighter mb-8">Feed_Configuration</h3>
+            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.4em] mb-10">Prioritize Sector Intelligence</p>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-12">
                {INTEL_CATEGORIES.map(cat => (
                  <button 
                    key={cat}
                    onClick={() => toggleCategory(cat)}
-                   className={`p-6 rounded-3xl border transition-all text-left group ${selectedCategories.includes(cat) ? 'bg-accent/20 border-accent' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+                   className={`p-6 rounded-3xl border transition-all text-left group ${preferredCategories.includes(cat) ? 'bg-accent/20 border-accent' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
                  >
                     <div className="flex justify-between items-center mb-2">
-                       <span className={`text-[10px] font-heading font-black uppercase tracking-widest ${selectedCategories.includes(cat) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>{cat.replace('_', ' ')}</span>
-                       <div className={`w-2 h-2 rounded-full ${selectedCategories.includes(cat) ? 'bg-accent animate-pulse' : 'bg-slate-800'}`}></div>
+                       <span className={`text-[10px] font-heading font-black uppercase tracking-widest ${preferredCategories.includes(cat) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>{cat.replace('_', ' ')}</span>
+                       <div className={`w-2 h-2 rounded-full ${preferredCategories.includes(cat) ? 'bg-accent animate-pulse' : 'bg-slate-800'}`}></div>
                     </div>
-                    <span className="text-[8px] font-mono text-slate-600 uppercase">Alert: ENABLED</span>
+                    <span className="text-[8px] font-mono text-slate-600 uppercase">{preferredCategories.includes(cat) ? 'PRIORITY_CHANNEL' : 'STANDARD_CHANNEL'}</span>
                  </button>
                ))}
+            </div>
+
+            <div className="pt-8 border-t border-white/5">
+                <h4 className="text-[10px] font-heading font-black text-white uppercase tracking-widest mb-6">Source_Blacklist_Protocols</h4>
+                <div className="flex gap-4 mb-6">
+                   <input 
+                      type="text"
+                      value={newBlockedSource}
+                      onChange={(e) => setNewBlockedSource(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addBlockedSource()}
+                      placeholder="Block source (e.g. 'TabloidNews')..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-red-500 outline-none transition-all font-mono"
+                   />
+                   <button 
+                      onClick={addBlockedSource}
+                      className="px-8 bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-500/20 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all"
+                   >
+                      Block_Source
+                   </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                   {blockedSources.map(src => (
+                      <div key={src} className="px-4 py-2 bg-red-950/40 border border-red-500/20 rounded-xl flex items-center gap-3 group">
+                         <span className="text-[9px] font-mono text-red-400 uppercase">{src}</span>
+                         <button onClick={() => removeBlockedSource(src)} className="text-red-500/60 hover:text-white transition-colors">✕</button>
+                      </div>
+                   ))}
+                   {blockedSources.length === 0 && <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest">No Active Blocks</span>}
+                </div>
             </div>
          </div>
 

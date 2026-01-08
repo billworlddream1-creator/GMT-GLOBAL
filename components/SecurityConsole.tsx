@@ -54,7 +54,8 @@ const SecurityConsole: React.FC<SecurityConsoleProps> = ({ intelService }) => {
 
   useEffect(() => {
     performScan();
-    const scanInterval = setInterval(() => performScan(true), 45000);
+    // Decreased background check frequency to 5m from 45s to avoid 429 quota errors
+    const scanInterval = setInterval(() => performScan(true), 300000);
     return () => clearInterval(scanInterval);
   }, [performScan]);
 
@@ -154,7 +155,7 @@ const SecurityConsole: React.FC<SecurityConsoleProps> = ({ intelService }) => {
         </div>
       </div>
 
-      {error && !selectedThreat && (
+      {error && (
         <div className="glass p-12 rounded-[3.5rem] border-red-500/40 bg-red-500/5 text-center space-y-6">
            <span className="text-6xl animate-pulse">🔒</span>
            <div className="space-y-2">
@@ -165,7 +166,7 @@ const SecurityConsole: React.FC<SecurityConsoleProps> = ({ intelService }) => {
         </div>
       )}
 
-      {!error || selectedThreat ? (
+      {(!error || selectedThreat) && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 overflow-hidden">
           {/* Threat Table */}
           <div className="lg:col-span-8 glass rounded-[3rem] border border-white/5 p-8 flex flex-col relative overflow-hidden bg-black/20">
@@ -349,7 +350,7 @@ const SecurityConsole: React.FC<SecurityConsoleProps> = ({ intelService }) => {
              </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

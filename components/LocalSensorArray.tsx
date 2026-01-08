@@ -39,7 +39,7 @@ const LocalSensorArray: React.FC<LocalSensorArrayProps> = ({ intelService }) => 
       id: `SIM-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
       name: `Unknown ${type === 'LISTENING_DEVICE' ? 'Bug' : type}`,
       type: type,
-      distanceMeters: Math.floor(Math.random() * 50) + 10,
+      distanceMeters: Math.floor(Math.random() * 190) + 10, // Updated for 200m range
       azimuth: Math.floor(Math.random() * 360),
       signalStrength: -30 - Math.floor(Math.random() * 40),
       status: 'RECORDING',
@@ -109,8 +109,8 @@ const LocalSensorArray: React.FC<LocalSensorArrayProps> = ({ intelService }) => 
            <span className="text-8xl font-heading font-black text-emerald-400 uppercase tracking-widest">SCAN</span>
         </div>
         <div className="relative z-10">
-          <h2 className="text-3xl font-heading font-black text-white uppercase tracking-tighter leading-none">Close_Quarter_Scanner</h2>
-          <p className="text-[10px] font-mono text-emerald-500 uppercase tracking-[0.4em] mt-2">Local RF & Optical Detection Array</p>
+          <h2 className="text-3xl font-heading font-black text-white uppercase tracking-tighter leading-none">Close_Range_Scanner</h2>
+          <p className="text-[10px] font-mono text-emerald-500 uppercase tracking-[0.4em] mt-2">200M Radius Device Detection Array</p>
         </div>
         
         <div className="flex flex-wrap gap-2 relative z-20">
@@ -150,9 +150,9 @@ const LocalSensorArray: React.FC<LocalSensorArrayProps> = ({ intelService }) => 
            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
            
            <div className="relative w-[500px] h-[500px] border border-emerald-500/20 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.05)]">
-              {/* Concentric Rings */}
-              {[20, 40, 60, 80, 100].map((r, i) => (
-                <div key={i} className="absolute border border-emerald-500/10 rounded-full flex items-center justify-center" style={{ width: `${r}%`, height: `${r}%` }}>
+              {/* Concentric Rings - Scaled for 200m */}
+              {[40, 80, 120, 160, 200].map((r, i) => (
+                <div key={i} className="absolute border border-emerald-500/10 rounded-full flex items-center justify-center" style={{ width: `${(i + 1) * 20}%`, height: `${(i + 1) * 20}%` }}>
                    <span className="absolute top-2 text-[6px] font-mono text-emerald-500/40">{r}M</span>
                 </div>
               ))}
@@ -174,8 +174,8 @@ const LocalSensorArray: React.FC<LocalSensorArrayProps> = ({ intelService }) => 
               {/* Devices */}
               {!loading && filteredSensors.map(sensor => {
                  // Convert Polar to Cartesian for display
-                 // Distance max 100m maps to 250px radius (50% of container)
-                 const r = (sensor.distanceMeters / 100) * 250;
+                 // Distance max 200m maps to 250px radius (50% of container)
+                 const r = (sensor.distanceMeters / 200) * 250;
                  const theta = (sensor.azimuth - 90) * (Math.PI / 180);
                  const x = Math.cos(theta) * r;
                  const y = Math.sin(theta) * r;
@@ -213,7 +213,7 @@ const LocalSensorArray: React.FC<LocalSensorArrayProps> = ({ intelService }) => 
            </div>
 
            <div className="absolute bottom-10 left-10 text-[8px] font-mono text-emerald-600/60 uppercase tracking-widest bg-black/60 p-4 rounded-xl border border-emerald-500/10 backdrop-blur-sm">
-             Lidar Array Active // Freq: 2.4GHz / 5GHz // Mode: PROXIMITY_ALERT
+             Lidar Array Active // Range: 200M // Mode: PROXIMITY_ALERT
            </div>
         </div>
 

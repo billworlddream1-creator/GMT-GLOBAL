@@ -7,70 +7,21 @@ interface AuthModalProps {
 }
 
 const AUTH_STEPS = [
-  { label: "Verifying credentials...", component: 'retina' },
-  { label: "Checking security...", component: 'finger' },
-  { label: "Setting up your session...", component: 'dna' },
-  { label: "Connecting to the server...", component: 'neural' },
-  { label: "Welcome back!", component: 'neural' }
+  { label: "Connecting to server...", icon: "📡" },
+  { label: "Verifying credentials...", icon: "🤝" },
+  { label: "Loading user profile...", icon: "👤" },
+  { label: "Welcome back.", icon: "✅" }
 ];
 
-const BioRetina = () => (
-  <div className="relative w-48 h-48 flex items-center justify-center" aria-hidden="true">
-    <div className="absolute inset-0 border-2 border-accent/20 rounded-full animate-ping"></div>
-    <div className="absolute inset-4 border border-accent/40 rounded-full animate-spin-slow"></div>
-    <div className="w-24 h-1 bg-accent shadow-[0_0_15px_var(--accent-primary)] absolute animate-[scan-retina_2s_linear_infinite]"></div>
-    <span className="text-5xl">👁️</span>
-    <style>{`
-      @keyframes scan-retina {
-        0%, 100% { transform: translateY(-60px); }
-        50% { transform: translateY(60px); }
-      }
-    `}</style>
-  </div>
-);
-
-const BioFinger = () => (
-  <div className="relative w-48 h-48 flex flex-col items-center justify-center" aria-hidden="true">
-    <div className="w-32 h-40 border-2 border-emerald-500/30 rounded-[2rem] relative overflow-hidden flex items-center justify-center bg-emerald-500/5">
-       <span className="text-6xl grayscale opacity-40">☝️</span>
-       <div className="absolute top-0 left-0 w-full h-1 bg-emerald-400 shadow-[0_0_10px_emerald] animate-[scan-finger_1.5s_ease-in-out_infinite]"></div>
-    </div>
-    <style>{`
-      @keyframes scan-finger {
-        0% { top: 0; }
-        100% { top: 100%; }
-      }
-    `}</style>
-  </div>
-);
-
-const BioDNA = () => (
-  <div className="relative w-48 h-48 flex items-center justify-center gap-2" aria-hidden="true">
-     {[...Array(8)].map((_, i) => (
-       <div 
-         key={i} 
-         className="w-2 bg-blue-500 rounded-full animate-[dna-float_2s_ease-in-out_infinite]"
-         style={{ height: `${20 + Math.random() * 60}%`, animationDelay: `${i * 0.2}s` }}
-       ></div>
-     ))}
-     <style>{`
-       @keyframes dna-float {
-         0%, 100% { transform: translateY(0); opacity: 0.3; }
-         50% { transform: translateY(-20px); opacity: 1; }
-       }
-     `}</style>
-  </div>
-);
-
 const AuthModal: React.FC<AuthModalProps> = ({ onLogin }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
-  const [email, setEmail] = useState('');
-  const [codename, setCodename] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [codename, setCodename] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [view, setView] = useState<'LOGIN' | 'SIGNUP' | 'RESET'>('LOGIN');
 
   useEffect(() => {
     let interval: number;
@@ -78,157 +29,210 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLogin }) => {
       interval = window.setInterval(() => {
         setCurrentStep(prev => prev + 1);
         playUISound('click');
-      }, 800);
+      }, 900);
     }
     return () => clearInterval(interval);
   }, [isSyncing, currentStep]);
 
-  const handleAuth = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (mode === 'reset') {
-      alert("RESET_REQUEST_SENT: Check your neural relay for a recovery link.");
-      setMode('login');
-      return;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (view === 'RESET') {
+        alert("A password reset link has been sent to your email.");
+        setView('LOGIN');
+        playUISound('success');
+        return;
     }
+
+    // Simulation Logic
+    const userData = {
+        name: view === 'SIGNUP' ? codename || 'New_Operative' : 'Operative_77', 
+        email: email,
+        // In a real app, you would send 'pass' to your backend here
+    };
+
+    startAuthSequence(userData);
+  };
+
+  const handleGoogleLogin = () => {
+    startAuthSequence({
+        name: 'Google_Operative', 
+        email: 'operative@gmail.com', 
+        photoUrl: 'https://lh3.googleusercontent.com/a/default-user=s96-c', 
+        provider: 'google' 
+    });
+  };
+
+  const startAuthSequence = (userData: any) => {
     setIsSyncing(true);
     playUISound('startup');
+    if (rememberMe) {
+        localStorage.setItem('gmt_remember_me', 'true');
+    }
     setTimeout(() => {
-      onLogin({ 
-        name: mode === 'register' ? codename : 'Agent_' + Math.floor(Math.random() * 1000), 
-        email 
-      });
-    }, AUTH_STEPS.length * 800 + 400);
-  };
-
-  const handleSocialLogin = (platform: string) => {
-    setEmail(`${platform.toLowerCase()}@gmt-intel.net`);
-    handleAuth();
-  };
-
-  const renderBioStage = () => {
-    const stage = AUTH_STEPS[currentStep].component;
-    if (stage === 'retina') return <BioRetina />;
-    if (stage === 'finger') return <BioFinger />;
-    if (stage === 'dna') return <BioDNA />;
-    return (
-      <div className="relative w-48 h-48 flex items-center justify-center">
-         <div className="absolute inset-0 border-t-2 border-accent rounded-full animate-spin"></div>
-         <span className="text-5xl animate-pulse">👤</span>
-      </div>
-    );
+      onLogin(userData);
+    }, AUTH_STEPS.length * 900 + 500);
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-slate-950/60 backdrop-blur-3xl flex items-center justify-center z-[2000] p-6 animate-in fade-in duration-1000"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="auth-title"
-    >
-      <div className="w-full max-w-md glass p-10 rounded-[3rem] border border-white/10 relative z-10 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-3xl flex items-center justify-center z-[2000] p-6 animate-in fade-in duration-1000">
+      <div className="w-full max-w-md glass p-10 rounded-[3rem] border border-white/10 relative z-10 shadow-2xl overflow-hidden bg-slate-900/60">
         {isSyncing ? (
-          <div className="flex flex-col items-center justify-center py-6 space-y-10 animate-in zoom-in-95 duration-500">
-             {renderBioStage()}
-             <div className="text-center space-y-4 w-full">
-                <h3 className="text-sm font-heading font-black text-white uppercase tracking-widest animate-pulse">Authenticating_Uplink...</h3>
-                <div className="p-4 glass bg-black/40 rounded-2xl border border-white/5" aria-live="polite">
-                   <p className="text-[10px] font-mono text-accent uppercase tracking-widest">{AUTH_STEPS[currentStep].label}</p>
-                </div>
+          <div className="flex flex-col items-center justify-center py-10 space-y-8 animate-in zoom-in-95 duration-500 text-center">
+             <div className="relative w-32 h-32 flex items-center justify-center">
+                <div className="absolute inset-0 border-2 border-accent/20 rounded-full animate-ping"></div>
+                <div className="absolute inset-4 border border-accent/40 rounded-full animate-spin-slow"></div>
+                <span className="text-4xl">{AUTH_STEPS[currentStep].icon}</span>
+             </div>
+             <div className="space-y-4">
+                <h3 className="text-sm font-heading font-black text-white uppercase tracking-widest animate-pulse">
+                    {view === 'SIGNUP' ? 'Creating Profile...' : 'Logging in...'}
+                </h3>
+                <p className="text-[10px] font-mono text-accent uppercase tracking-widest">{AUTH_STEPS[currentStep].label}</p>
              </div>
           </div>
         ) : (
-          <>
-            <div className="text-center mb-8">
-              <h2 id="auth-title" className="text-3xl font-heading font-black text-white tracking-tighter uppercase leading-none">
-                {mode === 'login' ? 'GMT_LOGIN' : mode === 'register' ? 'GMT_REGISTER' : 'GMT_RESET'}
-              </h2>
-              <p className="text-[10px] font-mono text-accent uppercase tracking-widest mt-2">Intelligence Authorization Protocol</p>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">GMT GLOBAL INTEL</h2>
+              <p className="text-[10px] font-mono text-accent uppercase tracking-widest">
+                  {view === 'LOGIN' ? 'Identify yourself to access the matrix' : 
+                   view === 'SIGNUP' ? 'Initialize new operative credentials' : 
+                   'Reset access protocols'}
+              </p>
             </div>
 
-            <form onSubmit={handleAuth} className="space-y-4">
-              {mode === 'register' && (
-                <div className="space-y-1">
-                  <label htmlFor="codename" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2">Agent ID</label>
-                  <input id="codename" type="text" required value={codename} onChange={(e) => setCodename(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:border-accent transition-all outline-none" placeholder="Choose a codename" />
+            {/* Toggle Switch */}
+            {view !== 'RESET' && (
+                <div className="flex bg-black/40 p-1 rounded-2xl border border-white/10">
+                    <button 
+                        type="button"
+                        onClick={() => { setView('LOGIN'); playUISound('click'); }}
+                        className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${view === 'LOGIN' ? 'bg-white/10 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Log In
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => { setView('SIGNUP'); playUISound('click'); }}
+                        className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${view === 'SIGNUP' ? 'bg-accent text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Sign Up
+                    </button>
                 </div>
+            )}
+
+            <div className="space-y-4">
+              {view === 'SIGNUP' && (
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Operative Codename" 
+                    value={codename}
+                    onChange={e => setCodename(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-accent outline-none font-mono transition-all animate-in slide-in-from-top-2" 
+                  />
               )}
-              <div className="space-y-1">
-                <label htmlFor="email" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2">Relay Email</label>
-                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:border-accent transition-all outline-none" placeholder="agent@email.com" />
-              </div>
               
-              {mode !== 'reset' && (
-                <div className="space-y-1 relative">
-                  <label htmlFor="pass" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2">Secure Key</label>
+              <input 
+                type="email" 
+                required 
+                placeholder="Email Address" 
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-accent outline-none font-mono transition-all" 
+              />
+              
+              {view !== 'RESET' && (
                   <div className="relative">
                     <input 
-                      id="pass" 
-                      type={showPassword ? "text" : "password"} 
+                      type={showPassword ? 'text' : 'password'} 
                       required 
-                      value={password} 
-                      onChange={(e) => setPassword(e.target.value)} 
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3 pr-12 text-sm text-white focus:border-accent transition-all outline-none font-mono" 
-                      placeholder="Enter passkey" 
+                      placeholder="Password" 
+                      value={pass}
+                      onChange={e => setPass(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white focus:border-accent outline-none font-mono transition-all pr-12" 
                     />
                     <button 
                       type="button"
-                      onClick={() => { setShowPassword(!showPassword); playUISound('click'); }}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-accent transition-colors"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
                     >
-                      {showPassword ? '👁️' : '🔒'}
+                      {showPassword ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      )}
                     </button>
                   </div>
-                </div>
               )}
+            </div>
 
-              {mode === 'login' && (
-                <div className="flex items-center justify-between px-2 pt-2">
-                  <label className="flex items-center gap-3 cursor-pointer group">
+            {view !== 'RESET' && (
+                <div className="flex items-center gap-3 px-2">
                     <input 
-                      type="checkbox" 
-                      checked={rememberMe} 
-                      onChange={(e) => { setRememberMe(e.target.checked); playUISound('click'); }} 
-                      className="hidden" 
+                        type="checkbox" 
+                        id="remember" 
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-white/20 bg-black/40 text-accent focus:ring-accent"
                     />
-                    <div className={`w-4 h-4 rounded border transition-all ${rememberMe ? 'bg-accent border-accent' : 'bg-black/40 border-white/10 group-hover:border-accent/40'} flex items-center justify-center`}>
-                      {rememberMe && <span className="text-[10px] text-white">✓</span>}
-                    </div>
-                    <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest group-hover:text-slate-300">Remember_Node</span>
-                  </label>
-                  <button type="button" onClick={() => setMode('reset')} className="text-[9px] font-mono text-accent hover:underline uppercase tracking-widest">Forgot_Pass?</button>
+                    <label htmlFor="remember" className="text-[9px] font-mono text-slate-400 uppercase tracking-widest cursor-pointer select-none">Remember Me</label>
                 </div>
-              )}
+            )}
 
-              <button type="submit" className="w-full py-4 mt-2 bg-accent hover:bg-accent/80 text-white font-heading font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl transition-all active:scale-95">
-                {mode === 'login' ? 'Sign In' : mode === 'register' ? 'Register Agent' : 'Reset Key'}
-              </button>
-            </form>
-
-            <div className="relative flex items-center gap-3 my-8">
-              <div className="flex-1 h-px bg-white/10"></div>
-              <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Third_Party_Uplink</span>
-              <div className="flex-1 h-px bg-white/10"></div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 mb-8">
-              {['Google', 'Microsoft', 'Yahoo'].map(platform => (
-                <button 
-                  key={platform}
-                  onClick={() => handleSocialLogin(platform)}
-                  aria-label={`Sign in with ${platform}`}
-                  className="py-3 flex items-center justify-center glass border-white/10 rounded-xl hover:bg-white/5 transition-all group"
-                >
-                  <img src={`https://www.${platform.toLowerCase()}.com/favicon.ico`} className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" alt="" />
+            <div className="flex flex-col gap-4">
+                <button type="submit" className="w-full py-5 bg-accent hover:bg-accent/80 text-white font-heading font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-xl active:scale-95">
+                    {view === 'LOGIN' ? 'Establish Link' : view === 'SIGNUP' ? 'Create Operative Profile' : 'Send Reset Link'}
                 </button>
-              ))}
+
+                {view !== 'RESET' && (
+                    <>
+                        <div className="relative flex py-2 items-center">
+                            <div className="flex-grow border-t border-white/10"></div>
+                            <span className="flex-shrink-0 mx-4 text-[8px] text-slate-500 uppercase font-mono tracking-widest">OR</span>
+                            <div className="flex-grow border-t border-white/10"></div>
+                        </div>
+
+                        <button 
+                            type="button" 
+                            onClick={handleGoogleLogin}
+                            className="w-full py-4 bg-white hover:bg-slate-200 text-slate-900 font-heading font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                            </svg>
+                            Continue with Google
+                        </button>
+                    </>
+                )}
             </div>
 
-            <div className="flex justify-between text-[9px] font-mono text-slate-500 uppercase">
-              <button onClick={() => setMode('login')} className={mode === 'login' ? 'text-accent font-black underline underline-offset-4' : 'hover:text-slate-300'}>Login_Node</button>
-              <button onClick={() => setMode('register')} className={mode === 'register' ? 'text-accent font-black underline underline-offset-4' : 'hover:text-slate-300'}>Create_Node</button>
+            <div className="flex justify-between text-[9px] font-mono text-slate-500 uppercase items-center">
+               <span>System Status: ONLINE</span>
+               {view === 'LOGIN' && (
+                   <button 
+                     type="button" 
+                     onClick={() => { setView('RESET'); playUISound('click'); }}
+                     className="hover:text-white transition-colors underline"
+                   >
+                     Forgot Password?
+                   </button>
+               )}
+               {view === 'RESET' && (
+                   <button 
+                     type="button" 
+                     onClick={() => { setView('LOGIN'); playUISound('click'); }}
+                     className="hover:text-white transition-colors underline"
+                   >
+                     Back to Login
+                   </button>
+               )}
             </div>
-          </>
+          </form>
         )}
       </div>
     </div>

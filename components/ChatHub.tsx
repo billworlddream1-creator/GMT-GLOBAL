@@ -77,10 +77,20 @@ const CHAT_THEMES: ChatTheme[] = [
 ];
 
 const ChatHub: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', sender: 'System', text: 'End-to-end encryption active.', timestamp: '12:00', isEncrypted: true },
-    { id: '2', sender: 'Agent_Zero', text: 'Package is secure. Standing by.', timestamp: '12:05', isEncrypted: true },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem('gmt_chat_history');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("Failed to load chat history", e);
+    }
+    return [
+      { id: '1', sender: 'System', text: 'End-to-end encryption active.', timestamp: '12:00', isEncrypted: true },
+      { id: '2', sender: 'Agent_Zero', text: 'Package is secure. Standing by.', timestamp: '12:05', isEncrypted: true },
+    ];
+  });
   const [inputValue, setInputValue] = useState('');
   const [activeChannel, setActiveChannel] = useState<'General' | 'Security_Ops' | 'Private_Node'>('General');
   const [relayNode, setRelayNode] = useState<string | undefined>(undefined);
@@ -103,6 +113,12 @@ const ChatHub: React.FC = () => {
       return acc;
     }, {} as Record<string, 'online' | 'offline'>);
   }, [users]);
+
+  // Persist chat history
+  useEffect(() => {
+    const historyToSave = messages.slice(-50);
+    localStorage.setItem('gmt_chat_history', JSON.stringify(historyToSave));
+  }, [messages]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -127,7 +143,7 @@ const ChatHub: React.FC = () => {
       relayNode: relayNode,
     };
 
-    setMessages([...messages, newMessage]);
+    setMessages(prev => [...prev, newMessage]);
     setInputValue('');
     playUISound('click');
 

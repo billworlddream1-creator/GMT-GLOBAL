@@ -9,6 +9,9 @@ interface CelebritySpotlightProps {
 }
 
 const CelebrityImageGallery = ({ images, onSelect }: { images: string[], onSelect: (url: string) => void }) => {
+  // Defensive check for images array
+  if (!Array.isArray(images) || images.length === 0) return null;
+
   return (
     <div className="space-y-6">
       <h4 className="text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-4">Captured_Imagery_Grid</h4>
@@ -148,11 +151,9 @@ const CelebritySpotlight: React.FC<CelebritySpotlightProps> = ({ intelService })
              </div>
 
              {/* Image Gallery Section */}
-             {dossier.imageUrls && dossier.imageUrls.length > 0 && (
-               <div className="glass p-10 rounded-[3.5rem] border border-white/10 bg-slate-900/20">
-                  <CelebrityImageGallery images={dossier.imageUrls} onSelect={setPreviewImage} />
-               </div>
-             )}
+             <div className="glass p-10 rounded-[3.5rem] border border-white/10 bg-slate-900/20">
+                <CelebrityImageGallery images={dossier.imageUrls || []} onSelect={setPreviewImage} />
+             </div>
           </div>
 
           {/* Intelligence Matrix */}
@@ -176,7 +177,7 @@ const CelebritySpotlight: React.FC<CelebritySpotlightProps> = ({ intelService })
                    <div className="space-y-6">
                       <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Neural_News_Nodes</h4>
                       <div className="space-y-3">
-                        {dossier.newsHighlights.map((news, i) => (
+                        {Array.isArray(dossier.newsHighlights) && dossier.newsHighlights.map((news, i) => (
                           <a 
                             key={i} 
                             href={news.uri} 
@@ -190,6 +191,9 @@ const CelebritySpotlight: React.FC<CelebritySpotlightProps> = ({ intelService })
                              </div>
                           </a>
                         ))}
+                        {(!Array.isArray(dossier.newsHighlights) || dossier.newsHighlights.length === 0) && (
+                          <div className="text-[9px] font-mono text-slate-600 uppercase italic p-4 text-center">No recent highlights acquired.</div>
+                        )}
                       </div>
                    </div>
                 </div>

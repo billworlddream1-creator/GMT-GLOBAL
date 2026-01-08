@@ -21,27 +21,47 @@ interface Tier {
 const TIERS: Tier[] = [
   {
     id: 'FREE',
-    title: 'GUEST_NODE',
-    price: 'ACCESS_GRANTED',
-    perks: ['Global News Feed', 'Standard Reports', 'Public Markets', 'Limited Neural Bandwidth'],
+    title: 'OPERATIVE_GUEST',
+    price: 'FREE_ACCESS',
+    perks: [
+      'Global Intelligence Feed',
+      'Surface Search Grounding',
+      'Basic Market Analysis',
+      'Standard Encryption Node',
+      '12h Data Retention'
+    ],
     color: 'border-slate-500/20',
     accent: 'text-slate-400',
     loadCapacity: 15
   },
   {
     id: 'FIELD_AGENT',
-    title: 'FIELD_OPERATIVE',
-    price: '$49/mo',
-    perks: ['Tactical Terminal Access', 'Shadow Recon Tools', 'VIP Intelligence', 'Tech Power Augmentation'],
+    title: 'TACTICAL_PRO',
+    price: '$29/mo',
+    perks: [
+      'Deep Web Intelligence',
+      'VIP Tracking Matrix',
+      'Orbital Signal Decryption',
+      'Priority Neural Processing',
+      '30-Day Archive Access',
+      'Unlimited Social Connects'
+    ],
     color: 'border-blue-500/30',
     accent: 'text-blue-400',
     loadCapacity: 45
   },
   {
     id: 'INTEL_DIRECTOR',
-    title: 'SECTOR_COMMANDER',
-    price: '$199/mo',
-    perks: ['Satellite Uplink Control', 'Deep Cyber Defense', 'Holographic Spatial Lab', 'Command Ops Authorization'],
+    title: 'SECTOR_COMMAND',
+    price: '$99/mo',
+    perks: [
+      'Full Satellite Control',
+      'Vulnerability Audit Engine',
+      'Predictive Geopolitics',
+      'Neural Audio Broadcast',
+      'Custom Module Layouts',
+      'Permanent Data Vaults'
+    ],
     color: 'border-emerald-500/30',
     accent: 'text-emerald-400',
     loadCapacity: 80
@@ -49,8 +69,15 @@ const TIERS: Tier[] = [
   {
     id: 'NEXUS_ARCHITECT',
     title: 'GLOBAL_OVERSEER',
-    price: '$999/mo',
-    perks: ['Deep Space Telemetry', 'Chrono-Intel Forecast', 'Oracle Prediction Engine', 'Total System Dominance'],
+    price: '$499/mo',
+    perks: [
+      'Total Network Dominance',
+      'Infinite Temporal Forecasts',
+      'Mass Anomaly Prediction',
+      'Quantum Cipher Creation',
+      'Unlimited Satellite Pulse',
+      'Zero-Latency Command Link'
+    ],
     color: 'border-purple-500/40',
     accent: 'text-purple-400',
     loadCapacity: 100
@@ -74,19 +101,19 @@ const SubscriptionHub: React.FC<SubscriptionHubProps> = ({ currentLevel, onUpgra
   const currentTier = useMemo(() => TIERS.find(t => t.id === currentLevel)!, [currentLevel]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-12 animate-in fade-in duration-1000 pb-20">
+    <div className="max-w-7xl mx-auto space-y-12 animate-in fade-in duration-1000 pb-32">
       <div className="glass p-12 rounded-[4rem] border border-white/5 bg-slate-900/40 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-           <span className="text-[12rem] font-heading font-black">AUTH</span>
+           <span className="text-[12rem] font-heading font-black">PLANS</span>
         </div>
 
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-12 mb-16">
           <div className="space-y-4 text-center md:text-left">
-            <h2 className="text-5xl font-heading font-black text-white uppercase tracking-tighter">Clearance_Registry</h2>
-            <p className="text-xs font-mono text-slate-500 uppercase tracking-[0.5em]">Current Clearance Status: <span className={currentTier.accent}>{currentTier.title}</span></p>
+            <h2 className="text-5xl font-heading font-black text-white uppercase tracking-tighter">Access_Protocols</h2>
+            <p className="text-xs font-mono text-slate-500 uppercase tracking-[0.5em]">Active Clearance: <span className={currentTier.accent}>{currentTier.title}</span></p>
           </div>
           <div className="glass px-10 py-6 rounded-3xl border border-white/10 bg-black/40 text-center space-y-3">
-             <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Neural_Load_Capacity</span>
+             <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Network_Priority_Tier</span>
              <div className="text-4xl font-heading font-black text-white">{currentTier.loadCapacity}%</div>
              <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
                 <div className={`h-full transition-all duration-1000 ${currentTier.accent.replace('text', 'bg')}`} style={{ width: `${currentTier.loadCapacity}%` }}></div>
@@ -106,7 +133,7 @@ const SubscriptionHub: React.FC<SubscriptionHubProps> = ({ currentLevel, onUpgra
                 className={`relative glass p-8 rounded-[3rem] border transition-all duration-500 flex flex-col ${tier.color} ${isCurrent ? 'bg-white/5 shadow-2xl scale-105 z-10' : 'opacity-60 hover:opacity-100'}`}
               >
                 {isCurrent && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white text-slate-900 text-[8px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">ACTIVE_UPLINK</div>
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white text-slate-900 text-[8px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">AUTHORIZED</div>
                 )}
                 
                 <div className="mb-8">
@@ -132,36 +159,12 @@ const SubscriptionHub: React.FC<SubscriptionHubProps> = ({ currentLevel, onUpgra
                       : isUpgrading ? 'bg-blue-600 animate-pulse' : 'bg-accent hover:bg-accent/80 text-white'
                   }`}
                 >
-                  {isUpgrading ? 'SYNCING...' : isCurrent ? 'CURRENT' : 'UPGRADE'}
+                  {isUpgrading ? 'UPLINKING...' : isCurrent ? 'CURRENT_PLAN' : 'SELECT_PROTOCOL'}
                 </button>
               </div>
             );
           })}
         </div>
-      </div>
-
-      {/* Comparison Matrix */}
-      <div className="glass p-12 rounded-[4rem] border border-white/5 bg-slate-900/20">
-         <h3 className="text-xs font-heading font-black text-white uppercase tracking-widest mb-10 border-b border-white/5 pb-6 flex items-center gap-3">
-           <span className="w-2 h-2 bg-accent rounded-full"></span>
-           CLEARANCE_PERK_MATRIX
-         </h3>
-         <div className="space-y-4">
-            {[
-              { perk: 'Satellite Signal Frequency', free: '10Hz', agent: '100Hz', director: '1GHz', architect: 'Deep Link' },
-              { perk: 'Concurrent Node Connections', free: '1', agent: '10', director: '50', architect: 'Unlimited' },
-              { perk: 'Data Persistence Horizon', free: '24h', agent: '30 Days', director: 'Full Archive', architect: 'Neural Store' },
-              { perk: 'Search Grounding Depth', free: 'Surface', agent: 'Deep Web', director: 'Classified', architect: 'Oracle Level' }
-            ].map((row, i) => (
-              <div key={i} className="grid grid-cols-5 gap-4 py-4 border-b border-white/5 text-[9px] font-mono uppercase">
-                <div className="text-slate-500 font-black">{row.perk}</div>
-                <div className="text-center text-slate-600">{row.free}</div>
-                <div className="text-center text-blue-400">{row.agent}</div>
-                <div className="text-center text-emerald-400">{row.director}</div>
-                <div className="text-center text-purple-400">{row.architect}</div>
-              </div>
-            ))}
-         </div>
       </div>
     </div>
   );

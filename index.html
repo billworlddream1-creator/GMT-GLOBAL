@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,8 +35,9 @@
             return theme;
         };
 
-        const initialThemeId = parseInt(localStorage.getItem('gmt_theme_id')) || 0;
-        window.applyTheme(initialThemeId);
+        // Randomize theme on load
+        const randomThemeId = Math.floor(Math.random() * THEMES.length);
+        window.applyTheme(randomThemeId);
 
         tailwind.config = {
           theme: {
@@ -178,8 +180,8 @@
     "three": "https://esm.sh/three@0.170.0",
     "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.0.0-rc.0?deps=react@19.0.0,react-dom@19.0.0,three@0.170.0",
     "@react-three/drei": "https://esm.sh/@react-three/drei@9.115.0?deps=react@19.0.0,react-dom@19.0.0,three@0.170.0,@react-three/fiber@9.0.0-rc.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
   }
 }
 </script>
@@ -205,3 +207,4 @@
     </script>
 </body>
 </html>
+    

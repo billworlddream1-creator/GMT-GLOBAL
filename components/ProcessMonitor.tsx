@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface Task {
@@ -27,11 +28,9 @@ const ProcessMonitor: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setTasks(prev => {
-        // Update existing tasks
         const updated = prev.map(t => {
           if (t.progress < 100 && t.status === 'ACTIVE') {
-            // Variable speed for realism
-            const step = Math.random() * 8 + 2; 
+            const step = Math.random() * 12 + 4; 
             return { ...t, progress: Math.min(100, t.progress + step) };
           }
           if (t.progress >= 100 && t.status !== 'COMPLETE') {
@@ -39,15 +38,13 @@ const ProcessMonitor: React.FC = () => {
           }
           return t;
         }).filter(t => {
-          // Keep completed tasks for a few seconds before purging
           if (t.status === 'COMPLETE') {
-            return Math.random() > 0.05; 
+            return Math.random() > 0.08; 
           }
           return true;
         });
 
-        // Add new tasks if queue is low
-        if (updated.length < 5 && Math.random() > 0.8) {
+        if (updated.length < 6 && Math.random() > 0.7) {
           updated.push({
             id: `PRC-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
             name: PROCESS_NAMES[Math.floor(Math.random() * PROCESS_NAMES.length)],
@@ -59,47 +56,48 @@ const ProcessMonitor: React.FC = () => {
       });
 
       setLoad(prev => {
-        const change = (Math.random() - 0.5) * 6;
-        return Math.max(5, Math.min(98, prev + change));
+        const change = (Math.random() - 0.5) * 4;
+        return Math.max(10, Math.min(95, prev + change));
       });
-    }, 1000);
+    }, 1200);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="fixed bottom-6 left-72 z-40 w-72 glass p-5 rounded-[2rem] border border-white/5 pointer-events-none select-none animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-accent animate-ping shadow-[0_0_8px_var(--accent-glow)]"></div>
-          <span className="text-[10px] font-heading font-black text-white tracking-[0.2em] uppercase">Tactical_Process_Monitor</span>
+    <div className="fixed bottom-10 left-24 right-8 z-[150] h-20 glass rounded-3xl border border-white/10 pointer-events-none select-none animate-in slide-in-from-bottom-4 duration-1000 flex items-center px-8 gap-8 bg-black/40 backdrop-blur-3xl shadow-2xl">
+      {/* HUD Lead */}
+      <div className="flex flex-col shrink-0 border-r border-white/10 pr-8">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-2 h-2 rounded-full bg-accent animate-ping shadow-[0_0_8px_var(--accent-primary)]"></div>
+          <span className="text-[10px] font-heading font-black text-white uppercase tracking-[0.2em]">Matrix_Flow</span>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[8px] font-mono text-accent font-bold tabular-nums">{load.toFixed(1)}%_LOAD</span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-xl font-heading font-black text-accent tabular-nums">{load.toFixed(1)}%</span>
+          <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">Global_Load</span>
         </div>
       </div>
 
-      <div className="space-y-4 max-h-60 overflow-hidden">
+      {/* Landscape Task View */}
+      <div className="flex-1 flex gap-6 overflow-hidden">
         {tasks.map(task => (
-          <div key={task.id} className="space-y-1.5">
+          <div key={task.id} className="flex-1 min-w-[140px] max-w-[200px] flex flex-col justify-center gap-1.5 animate-in fade-in duration-500">
             <div className="flex justify-between items-center text-[7px] font-mono tracking-widest">
-              <span className="text-slate-400 truncate w-40">{task.name} <span className="opacity-30">// {task.id}</span></span>
+              <span className="text-slate-400 truncate uppercase">{task.name}</span>
               <span className={`font-black ${task.progress >= 100 ? 'text-emerald-400' : 'text-accent'}`}>
                 {Math.round(task.progress)}%
               </span>
             </div>
             
-            {/* High-Fidelity Progress Bar */}
-            <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
+            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 relative">
               <div 
                 className={`h-full transition-all duration-1000 ease-out relative ${
                   task.progress >= 100 
-                    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' 
-                    : 'bg-accent shadow-[0_0_10px_var(--accent-glow)]'
+                    ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                    : 'bg-accent shadow-[0_0_8px_var(--accent-primary)]'
                 }`}
                 style={{ width: `${task.progress}%` }}
               >
-                {/* Traveling Bit-Pulse Shimmer */}
                 {task.progress < 100 && (
                   <div className="absolute inset-0 w-20 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-fast"></div>
                 )}
@@ -107,35 +105,41 @@ const ProcessMonitor: React.FC = () => {
             </div>
           </div>
         ))}
-        
         {tasks.length === 0 && (
-          <div className="text-[8px] font-mono text-slate-700 uppercase italic py-4 text-center tracking-widest">
-            Uplink_Idle_Standby...
+          <div className="flex-1 flex items-center justify-center">
+            <span className="text-[8px] font-mono text-slate-600 uppercase tracking-[0.5em] animate-pulse">Scanning_Synaptic_Pathways...</span>
           </div>
         )}
       </div>
 
-      <div className="mt-5 pt-3 border-t border-white/5 flex justify-between items-center">
-        <span className="text-[7px] font-mono text-slate-600 uppercase">Threads: {Math.floor(load / 6)} Established</span>
-        <div className="flex gap-1">
-          {[...Array(8)].map((_, i) => (
-            <div 
-              key={i} 
-              className={`w-1 h-2 rounded-sm transition-all duration-500 ${
-                i < (load / 12.5) ? 'bg-accent shadow-[0_0_4px_var(--accent-glow)]' : 'bg-slate-800'
-              }`}
-            ></div>
-          ))}
-        </div>
+      {/* Network Waveform Visualization */}
+      <div className="w-32 h-10 shrink-0 flex items-center justify-center opacity-40">
+        <svg viewBox="0 0 100 40" className="w-full h-full text-accent">
+          <path 
+            d="M0 20 Q 10 5, 20 20 T 40 20 T 60 20 T 80 20 T 100 20" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="1.5"
+            className="animate-wave-offset"
+          />
+        </svg>
       </div>
 
       <style>{`
         @keyframes shimmer-fast {
           0% { transform: translateX(-100%); }
-          100% { transform: translateX(400%); }
+          100% { transform: translateX(300%); }
         }
         .animate-shimmer-fast {
-          animation: shimmer-fast 1.5s infinite linear;
+          animation: shimmer-fast 1s infinite linear;
+        }
+        @keyframes wave-offset {
+          0% { stroke-dasharray: 0 100; stroke-dashoffset: 0; }
+          50% { stroke-dasharray: 100 0; stroke-dashoffset: -50; }
+          100% { stroke-dasharray: 0 100; stroke-dashoffset: -100; }
+        }
+        .animate-wave-offset {
+          animation: wave-offset 2s linear infinite;
         }
       `}</style>
     </div>

@@ -1,6 +1,7 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { playUISound } from '../utils/audioUtils';
+import FeatureOnboarding from './FeatureOnboarding';
 
 interface Node {
   id: string;
@@ -17,7 +18,11 @@ const NODES: Node[] = [
   { id: 'GMT-EX-09', name: 'Exfil 09', location: 'London', status: 'OFFLINE', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100' },
 ];
 
-const DirectBroadcast: React.FC = () => {
+interface DirectBroadcastProps {
+  logActivity?: (action: string, module: string) => void;
+}
+
+const DirectBroadcast: React.FC<DirectBroadcastProps> = ({ logActivity }) => {
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -25,6 +30,19 @@ const DirectBroadcast: React.FC = () => {
   const [bitrate, setBitrate] = useState(2500);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('gmt_tutorial_video');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  }, []);
+
+  const completeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('gmt_tutorial_video', 'true');
+  };
 
   useEffect(() => {
     let interval: number;
@@ -48,6 +66,7 @@ const DirectBroadcast: React.FC = () => {
     }
     
     playUISound('startup');
+    logActivity?.(`BROADCAST_INIT: ${selectedNodes.join(',')}`, 'BROADCAST');
     try {
       const media = await navigator.mediaDevices.getUserMedia({ 
         video: mode === 'VIDEO', 
@@ -57,8 +76,10 @@ const DirectBroadcast: React.FC = () => {
       if (videoRef.current) videoRef.current.srcObject = media;
       setIsBroadcasting(true);
       playUISound('success');
+      logActivity?.('STREAM_ACTIVE', 'BROADCAST');
     } catch (err) {
       alert("HARDWARE_FAILURE: Sensors unresponsive.");
+      logActivity?.('HARDWARE_FAIL', 'BROADCAST');
     }
   };
 
@@ -67,6 +88,7 @@ const DirectBroadcast: React.FC = () => {
     setStream(null);
     setIsBroadcasting(false);
     playUISound('alert');
+    logActivity?.('STREAM_TERMINATED', 'BROADCAST');
   };
 
   const formatTime = (seconds: number) => {
@@ -76,7 +98,9 @@ const DirectBroadcast: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-700 pb-32">
+    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-700 pb-32 relative">
+      {showTutorial && <FeatureOnboarding featureType="VIDEO" onComplete={completeTutorial} />}
+
       <div className="glass p-10 rounded-[3.5rem] border border-red-500/20 bg-red-950/10 flex justify-between items-center relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-5 select-none">
            <span className="text-[12rem] font-heading font-black text-red-500">LIVE</span>
